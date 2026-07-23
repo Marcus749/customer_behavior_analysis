@@ -1,0 +1,4474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Behavior Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onerror="document.write('<script src=\'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js\'>\x3C/script>')"></script>
+<style>
+  :root{
+    --magenta:#c8109c;
+    --purple:#6a2fb0;
+    --purple-dark:#4a1f80;
+    --navy:#1f3b8c;
+    --navy-dark:#16265e;
+    --lavender:#e3ade6;
+    --border:#e2d3f4;
+    --bg:#f5f1fb;
+    --card-bg:#ffffff;
+    --text-dark:#2b1a45;
+    --text-muted:#7a6f92;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    background:var(--bg);
+    color:var(--text-dark);
+    min-height:100vh;
+  }
+  .app{
+    max-width:1600px;
+    margin:0 auto;
+    padding:20px;
+  }
+  .header{
+    background:linear-gradient(90deg, var(--magenta) 0%, var(--purple) 60%, var(--purple-dark) 100%);
+    border-radius:14px;
+    padding:26px 32px;
+    margin-bottom:20px;
+    box-shadow:0 6px 20px rgba(106,47,176,0.25);
+  }
+  .header h1{
+    color:#fff;
+    font-size:2rem;
+    font-weight:800;
+    letter-spacing:0.3px;
+  }
+  .header p{
+    color:rgba(255,255,255,0.85);
+    font-size:0.85rem;
+    margin-top:4px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:250px 1fr;
+    gap:20px;
+    align-items:start;
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:22px 18px;
+    position:sticky;
+    top:20px;
+  }
+  .filter-group{margin-bottom:22px;}
+  .filter-group:last-child{margin-bottom:0;}
+  .filter-title{
+    font-size:0.78rem;
+    font-weight:700;
+    color:var(--purple-dark);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-bottom:10px;
+  }
+  .toggle-row{display:flex; gap:8px;}
+  .toggle-btn{
+    flex:1;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text-dark);
+    padding:9px 6px;
+    border-radius:8px;
+    font-size:0.85rem;
+    cursor:pointer;
+    transition:all .15s ease;
+    text-align:center;
+  }
+  .toggle-btn:hover{border-color:var(--purple);}
+  .toggle-btn.active{
+    background:var(--purple);
+    border-color:var(--purple);
+    color:#fff;
+    font-weight:600;
+  }
+  .list-btn{
+    display:block;
+    width:100%;
+    text-align:left;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text-dark);
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:0.85rem;
+    cursor:pointer;
+    margin-bottom:8px;
+    transition:all .15s ease;
+  }
+  .list-btn:last-child{margin-bottom:0;}
+  .list-btn:hover{border-color:var(--purple);}
+  .list-btn.active{
+    background:var(--purple);
+    border-color:var(--purple);
+    color:#fff;
+    font-weight:600;
+  }
+  .radio-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 4px;
+    cursor:pointer;
+    border-radius:6px;
+    font-size:0.85rem;
+    transition:background .15s ease;
+  }
+  .radio-row:hover{background:var(--bg);}
+  .radio-dot{
+    width:14px; height:14px;
+    border-radius:50%;
+    border:2px solid var(--purple);
+    flex-shrink:0;
+    position:relative;
+  }
+  .radio-row.active .radio-dot{background:var(--purple);}
+  .radio-row.active{color:var(--purple-dark); font-weight:600;}
+  .clear-link{
+    display:inline-block;
+    margin-top:14px;
+    font-size:0.78rem;
+    color:var(--purple);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+
+  /* ---------- MAIN ---------- */
+  .main{display:flex; flex-direction:column; gap:18px;}
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:18px;
+  }
+  .kpi-card{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:26px 20px;
+    text-align:center;
+    border-left:6px solid var(--purple);
+    box-shadow:0 2px 10px rgba(106,47,176,0.06);
+  }
+  .kpi-value{
+    font-size:2.4rem;
+    font-weight:800;
+    color:var(--purple-dark);
+    letter-spacing:0.5px;
+  }
+  .kpi-label{
+    margin-top:6px;
+    font-size:0.9rem;
+    font-weight:600;
+    color:var(--text-dark);
+  }
+  .chart-row{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:18px;
+  }
+  .chart-row.two{grid-template-columns:repeat(2, 1fr);}
+  .card{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px 18px 10px;
+    box-shadow:0 2px 10px rgba(106,47,176,0.06);
+    display:flex;
+    flex-direction:column;
+  }
+  .card-title{
+    font-size:0.95rem;
+    font-weight:700;
+    color:var(--purple-dark);
+    margin-bottom:10px;
+  }
+  .chart-wrap{
+    position:relative;
+    flex:1;
+    min-height:220px;
+  }
+  .donut-wrap{
+    position:relative;
+    height:230px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .donut-labels{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+  }
+  .donut-label{
+    position:absolute;
+    font-size:0.95rem;
+    font-weight:700;
+    color:var(--text-dark);
+  }
+  .label-yes{ top:14%; left:2%; }
+  .label-no{ bottom:12%; right:2%; }
+  .empty-note{
+    font-size:0.78rem;
+    color:var(--text-muted);
+    text-align:center;
+    padding:30px 0;
+  }
+
+  footer{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:0.75rem;
+    padding:18px 0 6px;
+  }
+
+  @media (max-width: 980px){
+    .layout{grid-template-columns:1fr;}
+    .sidebar{position:relative; top:0;}
+    .kpi-row{grid-template-columns:1fr;}
+    .chart-row, .chart-row.two{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <h1>Customer Behavior Dashboard</h1>
+    <p id="filterSummary">Showing all 3,900 customers</p>
+  </div>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="filter-group">
+        <div class="filter-title">Subscription Status</div>
+        <div class="toggle-row" id="subFilter">
+          <button class="toggle-btn" data-value="N">No</button>
+          <button class="toggle-btn" data-value="Y">Yes</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">Gender</div>
+        <div class="toggle-row" id="genderFilter">
+          <button class="toggle-btn" data-value="F">Female</button>
+          <button class="toggle-btn" data-value="M">Male</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">Category</div>
+        <div id="categoryFilter">
+          <button class="list-btn" data-value="A">Accessories</button>
+          <button class="list-btn" data-value="C">Clothing</button>
+          <button class="list-btn" data-value="F">Footwear</button>
+          <button class="list-btn" data-value="O">Outerwear</button>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <div class="filter-title">Shipping Type</div>
+        <div id="shipFilter">
+          <div class="radio-row" data-value="T"><span class="radio-dot"></span>2-Day Shipping</div>
+          <div class="radio-row" data-value="E"><span class="radio-dot"></span>Express</div>
+          <div class="radio-row" data-value="R"><span class="radio-dot"></span>Free Shipping</div>
+          <div class="radio-row" data-value="N"><span class="radio-dot"></span>Next Day Air</div>
+          <div class="radio-row" data-value="S"><span class="radio-dot"></span>Standard</div>
+          <div class="radio-row" data-value="P"><span class="radio-dot"></span>Store Pickup</div>
+        </div>
+      </div>
+
+      <span class="clear-link" id="clearAll">Clear all filters</span>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiCustomers">-</div>
+          <div class="kpi-label">Number of Customers</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiAvgPurchase">-</div>
+          <div class="kpi-label">Average Purchase Amount</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiAvgRating">-</div>
+          <div class="kpi-label">Average Review Rating</div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-title">% of Customers by Subscription Status</div>
+          <div class="donut-wrap">
+            <canvas id="subDonut"></canvas>
+            <div class="donut-labels">
+              <div class="donut-label label-yes" id="labelYes">Yes 0%</div>
+              <div class="donut-label label-no" id="labelNo">No 0%</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Revenue by Category</div>
+          <div class="chart-wrap"><canvas id="revCatChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sales by Category</div>
+          <div class="chart-wrap"><canvas id="salesCatChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="chart-row two">
+        <div class="card">
+          <div class="card-title">Revenue by Age Group</div>
+          <div class="chart-wrap"><canvas id="revAgeChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sales by Age Group</div>
+          <div class="chart-wrap"><canvas id="salesAgeChart"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>Customer Behavior Dashboard &middot; built from customer transaction data &middot; all figures update live with filters</footer>
+</div>
+
+<script>
+/* ============ EMBEDDED DATA ============
+   columns: age,gender,category,amount,rating,subscription,shipping,payment
+   codes -> gender: M/F | category: C=Clothing A=Accessories F=Footwear O=Outerwear
+            sub: Y/N | ship: E=Express R=Free Shipping N=Next Day Air S=Standard T=2-Day Shipping P=Store Pickup
+            pay: V=Venmo H=Cash C=Credit Card P=PayPal B=Bank Transfer D=Debit Card
+*/
+const RAW_CSV = `55,M,C,53,3.1,Y,E,V
+19,M,C,64,3.1,Y,E,H
+50,M,C,73,3.1,Y,R,C
+21,M,F,90,3.5,Y,N,P
+45,M,C,49,2.7,Y,R,P
+46,M,F,20,2.9,Y,S,V
+63,M,C,85,3.2,Y,R,H
+27,M,C,34,3.2,Y,R,C
+26,M,O,97,2.6,Y,E,V
+57,M,A,31,4.8,Y,T,H
+53,M,F,34,4.1,Y,P,B
+30,M,C,68,4.9,Y,P,B
+61,M,O,72,4.5,Y,E,V
+65,M,C,51,4.7,Y,E,P
+64,M,O,53,4.7,Y,R,D
+64,M,C,81,2.8,Y,P,P
+25,M,A,36,4.1,Y,N,D
+53,M,C,38,4.7,Y,T,V
+52,M,C,48,4.6,Y,R,H
+66,M,C,90,3.3,Y,S,D
+21,M,C,51,2.8,Y,E,H
+31,M,C,62,4.1,Y,P,D
+56,M,C,37,3.2,Y,P,D
+31,M,C,88,4.4,Y,E,C
+18,M,O,22,2.9,Y,P,D
+18,M,C,25,3.6,Y,E,P
+38,M,A,20,3.6,Y,N,C
+56,M,C,56,5.0,Y,N,B
+54,M,A,94,4.4,Y,R,P
+31,M,C,48,4.1,Y,P,C
+57,M,A,31,4.7,Y,S,C
+33,M,C,79,4.7,Y,P,V
+36,M,O,67,4.9,Y,R,V
+54,M,C,38,3.3,Y,P,H
+36,M,C,91,4.6,Y,T,P
+54,M,C,33,4.0,Y,T,C
+35,M,C,69,4.6,Y,R,P
+35,M,C,45,2.8,Y,P,P
+29,M,C,37,nan,Y,T,V
+70,M,C,60,4.2,Y,E,C
+69,M,A,76,4.6,Y,N,D
+67,M,A,39,4.5,Y,S,V
+20,M,O,100,4.1,Y,R,P
+25,M,A,69,3.7,Y,P,P
+39,M,A,53,4.6,Y,R,P
+50,M,C,21,2.9,Y,T,P
+57,M,C,43,2.9,Y,P,H
+55,M,A,54,4.5,Y,R,H
+42,M,C,55,2.7,Y,P,H
+68,M,C,30,4.6,Y,N,D
+49,M,C,28,nan,Y,P,D
+59,M,C,59,4.7,Y,T,C
+42,M,C,20,2.6,Y,R,C
+29,M,C,24,3.9,Y,N,C
+47,M,O,94,4.2,Y,N,D
+40,M,O,28,3.0,Y,T,C
+41,M,A,73,4.7,Y,P,C
+21,M,O,64,4.4,Y,P,D
+69,M,C,54,4.2,Y,R,V
+63,M,A,79,4.6,Y,S,D
+50,M,C,37,4.0,Y,E,H
+55,M,A,68,4.7,Y,P,C
+30,M,F,21,3.8,Y,R,C
+33,M,A,79,2.7,Y,T,C
+65,M,F,83,4.8,Y,S,D
+65,M,A,36,4.8,Y,T,V
+31,M,C,94,4.7,Y,T,V
+45,M,O,33,4.4,Y,P,D
+57,M,A,46,3.9,Y,N,H
+48,M,A,70,4.4,Y,E,H
+22,M,A,29,4.2,Y,E,D
+36,M,C,48,2.9,Y,E,B
+18,M,C,26,2.9,Y,P,B
+48,M,C,85,2.7,Y,R,B
+49,M,A,58,4.5,Y,E,H
+64,M,A,85,2.7,Y,R,C
+50,M,A,43,4.2,Y,R,V
+22,M,C,53,3.3,Y,N,D
+50,M,C,91,4.7,Y,R,V
+38,M,O,96,2.6,Y,T,B
+19,M,F,72,nan,Y,P,C
+67,M,F,96,2.6,Y,E,C
+19,M,C,28,4.0,Y,T,C
+36,M,C,40,4.1,Y,S,B
+52,M,O,32,4.4,Y,S,B
+53,M,A,95,4.5,Y,N,D
+24,M,C,41,3.7,Y,T,H
+52,M,F,53,3.7,Y,T,D
+33,M,C,47,3.5,Y,R,C
+47,M,O,83,3.6,Y,N,H
+25,M,A,48,2.9,Y,E,C
+44,M,A,99,4.6,Y,S,C
+61,M,O,87,4.4,Y,T,V
+37,M,C,62,4.5,Y,S,C
+58,M,C,76,4.6,Y,R,C
+37,M,F,100,3.8,Y,R,P
+32,M,A,73,nan,Y,E,V
+21,M,F,92,4.8,Y,P,H
+20,M,C,67,2.6,Y,N,B
+26,M,C,40,3.7,Y,E,D
+62,M,A,98,2.7,Y,E,H
+27,M,O,85,4.6,Y,E,C
+51,M,C,67,4.8,Y,N,C
+54,M,F,89,4.0,Y,N,V
+55,M,A,24,4.4,Y,T,P
+69,M,A,96,3.6,Y,N,B
+64,M,O,35,3.7,Y,S,C
+28,M,F,67,3.1,Y,N,P
+70,M,C,79,3.4,Y,N,B
+58,M,C,85,2.6,Y,N,B
+56,M,A,26,4.0,Y,S,V
+26,M,A,75,5.0,Y,R,C
+37,M,A,65,4.3,Y,R,P
+44,M,A,54,3.1,Y,N,P
+70,M,O,95,3.7,Y,P,H
+53,M,C,94,3.8,Y,S,D
+55,M,F,86,3.4,Y,R,V
+50,M,F,32,4.6,Y,E,H
+50,M,C,45,4.8,Y,T,H
+38,M,O,76,4.3,Y,E,H
+64,M,A,84,4.0,Y,E,B
+19,M,C,72,4.2,Y,S,H
+40,M,A,40,4.8,Y,T,H
+57,M,C,89,3.1,Y,R,H
+44,M,C,86,3.1,Y,N,P
+49,M,C,54,3.6,Y,N,V
+43,M,C,36,3.9,Y,P,H
+24,M,C,89,4.8,Y,N,C
+20,M,A,32,4.7,Y,S,C
+24,M,C,67,4.2,Y,T,P
+44,M,A,39,3.7,Y,N,P
+28,M,C,29,3.9,Y,S,C
+30,M,A,58,4.7,Y,T,P
+52,M,C,65,2.5,Y,N,V
+43,M,A,94,4.9,Y,P,H
+43,M,F,81,4.1,Y,E,P
+39,M,C,86,3.3,Y,R,D
+68,M,F,43,4.7,Y,R,P
+68,M,C,29,4.4,Y,P,B
+49,M,O,95,3.8,Y,P,V
+63,M,C,28,3.9,Y,T,C
+56,M,A,46,4.9,Y,R,P
+37,M,O,58,3.1,Y,R,C
+30,M,O,48,2.7,Y,P,P
+19,M,F,43,3.2,Y,E,H
+24,M,A,95,4.5,Y,S,D
+52,M,C,30,4.0,Y,S,V
+63,M,F,64,3.5,Y,T,B
+37,M,A,90,2.6,Y,P,D
+38,M,C,76,3.2,Y,R,P
+35,M,F,96,4.9,Y,S,D
+28,M,A,47,4.5,Y,N,V
+30,M,C,85,4.3,Y,E,V
+69,M,C,55,3.2,Y,S,D
+41,M,C,98,3.6,Y,N,V
+63,M,C,77,4.3,Y,R,B
+35,M,C,26,4.0,Y,S,D
+36,M,A,68,3.0,Y,N,B
+25,M,C,73,4.1,Y,S,B
+58,M,A,27,3.8,Y,P,B
+27,M,A,23,4.6,Y,R,V
+65,M,A,49,3.0,Y,E,V
+54,M,A,74,3.0,Y,P,P
+54,M,C,67,3.4,Y,S,D
+59,M,A,65,2.6,Y,R,C
+42,M,A,60,2.8,Y,P,H
+46,M,F,31,4.0,Y,P,H
+33,M,A,27,4.0,Y,E,C
+34,M,F,80,3.0,Y,E,H
+27,M,O,30,3.3,Y,S,P
+52,M,C,25,2.6,Y,P,V
+29,M,C,35,3.6,Y,P,C
+54,M,A,67,3.9,Y,N,C
+25,M,A,46,3.4,Y,S,H
+41,M,F,35,3.5,Y,E,V
+53,M,O,86,2.8,Y,N,B
+53,M,A,81,2.7,Y,N,C
+21,M,C,42,3.7,Y,N,B
+61,M,C,43,4.3,Y,T,P
+64,M,F,31,4.9,Y,P,B
+51,M,F,81,3.3,Y,P,D
+32,M,C,61,4.7,Y,N,B
+38,M,A,96,2.8,Y,P,D
+58,M,C,29,3.6,Y,T,C
+32,M,F,33,3.0,Y,E,H
+46,M,C,32,4.5,Y,P,B
+39,M,A,56,2.9,Y,S,D
+19,M,F,94,3.3,Y,P,B
+50,M,C,53,3.1,Y,E,B
+36,M,C,82,4.4,Y,N,C
+65,M,O,70,3.0,Y,R,V
+64,M,A,76,3.9,Y,R,H
+46,M,F,29,2.9,Y,E,P
+36,M,A,100,3.0,Y,S,V
+51,M,A,94,3.1,Y,E,D
+51,M,O,25,4.3,Y,R,C
+38,M,F,88,3.9,Y,N,C
+59,M,A,78,3.2,Y,T,C
+57,M,A,45,4.8,Y,S,C
+54,M,A,73,3.8,Y,E,H
+25,M,C,61,3.3,Y,N,V
+69,M,C,22,4.3,Y,R,B
+57,M,A,38,2.7,Y,E,V
+70,M,A,38,3.2,Y,N,B
+24,M,F,100,4.0,Y,P,H
+67,M,C,64,3.0,Y,S,P
+24,M,C,55,4.2,Y,R,V
+62,M,A,91,2.9,Y,E,B
+57,M,C,38,4.1,Y,P,C
+55,M,F,97,3.2,Y,P,H
+45,M,O,22,3.0,Y,T,P
+69,M,C,92,4.2,Y,T,D
+67,M,A,84,4.2,Y,E,D
+30,M,A,93,4.4,Y,P,D
+24,M,O,50,4.2,Y,N,H
+62,M,A,64,2.8,Y,T,P
+43,M,C,61,3.7,Y,R,V
+35,M,A,48,3.5,Y,N,B
+28,M,C,45,2.9,Y,P,C
+32,M,A,88,3.0,Y,R,H
+39,M,F,57,3.7,Y,E,D
+28,M,A,68,4.4,Y,P,B
+47,M,A,94,4.5,Y,T,P
+20,M,C,41,4.8,Y,R,P
+63,M,C,83,2.9,Y,R,H
+25,M,O,22,3.2,Y,N,B
+29,M,F,74,3.3,Y,R,P
+50,M,C,90,4.2,Y,S,V
+18,M,C,79,2.9,Y,P,C
+70,M,F,28,4.6,Y,N,P
+66,M,A,88,4.1,Y,S,C
+28,M,C,26,3.1,Y,T,D
+54,M,A,27,4.2,Y,E,B
+19,M,C,83,4.5,Y,N,B
+20,M,A,39,3.7,Y,N,C
+43,M,A,89,3.7,Y,R,D
+38,M,O,68,3.4,Y,N,P
+50,M,C,90,3.0,Y,P,D
+64,M,C,34,4.2,Y,R,H
+49,M,C,51,2.9,Y,E,C
+47,M,C,45,3.5,Y,R,B
+36,M,C,88,4.1,Y,R,V
+55,M,O,85,4.3,Y,P,D
+25,M,A,100,2.8,Y,T,D
+53,M,A,42,4.9,Y,T,P
+49,M,F,53,3.3,Y,N,V
+35,M,A,86,3.2,Y,E,V
+29,M,C,66,4.4,Y,S,D
+47,M,A,100,4.8,Y,E,P
+53,M,A,47,4.2,Y,S,C
+33,M,C,25,4.0,Y,E,B
+21,M,A,51,2.5,Y,S,P
+32,M,C,41,3.9,Y,R,V
+52,M,F,73,4.9,Y,T,B
+67,M,A,42,3.5,Y,P,P
+43,M,A,20,4.2,Y,R,D
+58,M,A,30,4.7,Y,E,C
+20,M,A,53,4.5,Y,E,C
+61,M,A,74,2.8,Y,E,H
+32,M,C,57,2.9,Y,S,D
+38,M,A,57,3.2,Y,T,C
+21,M,C,77,4.9,Y,S,C
+37,M,C,40,nan,Y,N,D
+27,M,C,46,4.3,Y,P,V
+36,M,C,78,3.9,Y,P,H
+32,M,A,59,3.2,Y,T,B
+51,M,A,75,3.1,Y,E,C
+64,M,C,54,3.9,Y,T,V
+68,M,F,42,2.6,Y,P,H
+68,M,C,44,3.3,Y,N,H
+33,M,C,52,4.6,Y,R,B
+65,M,A,69,4.6,Y,E,C
+48,M,A,26,4.4,Y,T,D
+69,M,O,33,4.2,Y,E,D
+59,M,A,32,3.0,Y,E,H
+48,M,A,85,4.0,Y,E,C
+25,M,C,30,3.5,Y,E,B
+29,M,C,29,3.0,Y,P,B
+57,M,C,95,3.7,Y,E,D
+23,M,F,69,4.0,Y,S,B
+45,M,F,69,4.2,Y,T,H
+38,M,A,61,2.5,Y,S,D
+21,M,C,94,3.0,Y,T,H
+32,M,C,30,3.2,Y,N,V
+63,M,C,45,3.5,Y,S,P
+29,M,A,39,4.8,Y,E,D
+27,M,A,51,2.6,Y,P,D
+56,M,A,37,3.4,Y,T,V
+30,M,C,62,3.7,Y,T,V
+49,M,O,85,4.5,Y,T,C
+58,M,C,33,3.7,Y,S,P
+57,M,C,26,3.3,Y,N,B
+60,M,F,99,4.7,Y,R,H
+69,M,A,39,2.7,Y,E,P
+70,M,C,20,4.6,Y,P,C
+53,M,A,42,2.7,Y,P,C
+25,M,F,74,4.8,Y,T,C
+48,M,F,26,4.4,Y,S,C
+69,M,C,53,4.0,Y,S,V
+25,M,F,80,3.2,Y,N,P
+29,M,A,98,4.4,Y,P,P
+46,M,C,95,3.8,Y,S,C
+37,M,C,44,3.6,Y,E,B
+20,M,F,60,3.3,Y,N,V
+40,M,C,84,3.4,Y,N,C
+60,M,C,59,3.5,Y,T,P
+26,M,O,49,3.6,Y,E,H
+29,M,A,32,3.2,Y,R,C
+66,M,A,29,3.7,Y,S,V
+66,M,C,22,4.5,Y,S,H
+56,M,C,85,4.6,Y,S,H
+69,M,C,52,4.1,Y,P,B
+38,M,C,89,3.4,Y,N,P
+42,M,C,77,3.7,Y,E,C
+30,M,C,24,3.3,Y,P,D
+66,M,A,24,4.5,Y,E,D
+36,M,A,22,3.3,Y,R,V
+58,M,C,82,4.3,Y,S,H
+45,M,A,67,2.5,Y,S,H
+47,M,C,74,2.6,Y,S,H
+66,M,A,72,4.9,Y,S,D
+41,M,F,36,4.7,Y,R,D
+41,M,A,95,3.0,Y,S,C
+66,M,C,78,3.5,Y,N,P
+37,M,C,82,4.8,Y,S,V
+70,M,C,70,4.3,Y,R,D
+62,M,A,41,3.2,Y,P,B
+61,M,O,42,3.1,Y,R,P
+48,M,O,50,2.8,Y,R,C
+70,M,C,31,2.9,Y,T,B
+46,M,C,51,nan,Y,E,V
+31,M,C,98,3.3,Y,P,P
+19,M,C,86,2.8,Y,T,C
+39,M,C,64,4.5,Y,S,B
+41,M,C,46,2.6,Y,N,C
+20,M,C,85,3.7,Y,S,V
+36,M,A,81,4.4,Y,E,P
+32,M,C,59,4.3,Y,T,B
+69,M,C,79,3.5,Y,E,H
+40,M,C,33,3.8,Y,T,C
+40,M,C,47,3.5,Y,E,V
+20,M,A,20,4.6,Y,P,D
+64,M,O,36,2.6,Y,N,C
+27,M,F,39,4.4,Y,N,V
+24,M,C,71,4.0,Y,S,D
+48,M,F,59,4.4,Y,N,B
+49,M,C,50,4.7,Y,N,H
+36,M,F,41,3.9,Y,P,P
+56,M,C,59,2.7,Y,R,P
+37,M,A,87,3.7,Y,T,B
+42,M,C,68,2.6,Y,T,B
+28,M,C,90,3.9,Y,S,D
+27,M,C,71,4.9,Y,N,H
+63,M,F,64,4.1,Y,P,D
+58,M,A,76,3.0,Y,R,V
+37,M,A,42,4.1,Y,T,P
+56,M,C,80,nan,Y,S,H
+18,M,A,56,4.0,Y,S,C
+48,M,A,25,3.6,Y,E,C
+31,M,F,74,3.0,Y,P,C
+51,M,C,30,3.0,Y,S,D
+65,M,C,96,2.6,Y,R,H
+53,M,F,64,3.4,Y,R,V
+55,M,C,88,3.1,Y,R,B
+62,M,F,88,3.0,Y,R,V
+55,M,A,88,3.7,Y,S,P
+64,M,C,36,3.5,Y,P,V
+52,M,C,40,2.8,Y,P,B
+24,M,A,39,4.5,Y,S,H
+38,M,A,40,3.3,Y,P,P
+59,M,A,34,3.4,Y,E,P
+27,M,F,83,3.2,Y,T,P
+24,M,C,85,3.7,Y,S,D
+23,M,O,27,4.6,Y,E,V
+69,M,A,78,5.0,Y,P,B
+59,M,A,32,4.4,Y,S,D
+51,M,F,51,4.9,Y,E,V
+63,M,A,32,4.1,Y,S,C
+54,M,C,62,4.9,Y,N,C
+32,M,C,29,4.7,Y,T,D
+39,M,A,69,3.0,Y,P,B
+66,M,A,25,3.4,Y,P,C
+28,M,C,76,3.2,Y,P,P
+50,M,A,77,nan,Y,S,P
+70,M,C,33,4.5,Y,T,V
+67,M,C,93,2.7,Y,N,C
+64,M,A,39,3.4,Y,E,P
+45,M,O,93,4.6,Y,P,P
+22,M,A,82,2.7,Y,P,P
+27,M,F,42,4.2,Y,S,B
+25,M,A,71,3.2,Y,T,P
+37,M,C,86,4.8,Y,S,H
+26,M,C,82,3.3,Y,N,C
+33,M,F,65,4.2,Y,S,P
+43,M,A,29,4.8,Y,P,D
+37,M,F,65,4.9,Y,P,P
+46,M,C,88,3.9,Y,S,B
+22,M,A,46,3.0,Y,R,H
+20,M,F,67,4.6,Y,R,D
+60,M,A,35,3.5,Y,T,D
+39,M,F,66,4.8,Y,R,P
+43,M,C,91,4.8,Y,S,H
+31,M,A,78,3.0,Y,E,P
+19,M,F,45,4.5,Y,N,B
+35,M,C,93,4.8,Y,P,C
+41,M,C,74,3.8,Y,S,H
+52,M,A,55,4.6,Y,E,H
+45,M,C,76,3.1,Y,N,C
+34,M,F,66,3.4,Y,E,H
+35,M,C,51,3.3,Y,T,B
+29,M,C,26,4.8,Y,T,C
+59,M,C,29,2.8,Y,E,P
+24,M,O,74,3.1,Y,P,B
+70,M,A,99,4.6,Y,R,H
+29,M,A,88,2.6,Y,P,D
+67,M,O,31,2.6,Y,E,B
+36,M,A,55,3.8,Y,R,B
+23,M,F,81,4.5,Y,R,D
+18,M,C,73,3.0,Y,S,V
+53,M,C,91,nan,Y,R,C
+32,M,C,54,3.8,Y,R,D
+38,M,C,40,3.5,Y,S,H
+47,M,C,59,3.1,Y,P,D
+46,M,A,26,3.0,Y,P,C
+66,M,C,23,4.3,Y,S,P
+40,M,C,87,3.3,Y,P,C
+43,M,C,71,4.7,Y,E,C
+58,M,A,91,4.5,Y,P,C
+21,M,O,64,2.9,Y,R,D
+42,M,F,94,4.1,Y,T,H
+24,M,C,40,3.5,Y,P,D
+43,M,A,76,3.4,Y,P,H
+47,M,C,86,3.3,Y,R,V
+49,M,C,92,3.2,Y,P,C
+50,M,F,52,4.0,Y,P,P
+51,M,O,28,3.6,Y,N,B
+40,M,C,46,4.6,Y,R,B
+45,M,A,50,2.6,Y,N,P
+52,M,A,23,4.3,Y,E,C
+62,M,O,50,3.4,Y,R,H
+20,M,C,89,3.5,Y,P,D
+43,M,C,81,4.2,Y,S,C
+29,M,A,69,nan,Y,P,C
+22,M,A,67,3.6,Y,R,P
+48,M,C,20,4.3,Y,P,D
+42,M,F,29,4.9,Y,S,V
+19,M,C,74,4.1,Y,P,V
+60,M,C,82,3.6,Y,S,B
+32,M,A,23,3.4,Y,N,B
+26,M,A,45,2.9,Y,T,B
+25,M,F,21,2.7,Y,P,C
+66,M,A,31,4.3,Y,E,C
+45,M,C,45,nan,Y,E,P
+54,M,A,56,2.8,Y,N,C
+37,M,O,97,3.2,Y,N,H
+54,M,C,100,3.6,Y,P,D
+50,M,C,96,4.0,Y,T,C
+25,M,A,99,4.9,Y,N,D
+47,M,C,91,4.0,Y,T,P
+63,M,A,30,3.8,Y,S,P
+64,M,F,65,nan,Y,P,B
+18,M,F,93,3.9,Y,E,V
+59,M,O,81,3.3,Y,E,V
+37,M,A,81,2.7,Y,S,V
+23,M,A,52,4.7,Y,N,P
+54,M,C,88,2.8,Y,N,H
+38,M,C,24,4.6,Y,R,P
+19,M,A,51,4.5,Y,T,D
+34,M,A,38,5.0,Y,R,H
+21,M,C,46,4.1,Y,T,D
+50,M,C,63,4.6,Y,E,H
+55,M,A,72,4.9,Y,T,B
+20,M,C,39,3.9,Y,R,B
+34,M,O,42,3.9,Y,P,P
+62,M,C,76,2.6,Y,T,H
+21,M,F,66,2.7,Y,R,D
+21,M,A,90,3.5,Y,R,D
+42,M,C,56,3.7,Y,R,D
+35,M,A,43,3.2,Y,R,V
+39,M,A,84,3.3,Y,P,V
+68,M,C,88,4.8,Y,S,D
+46,M,A,88,3.2,Y,T,P
+41,M,A,42,2.5,Y,T,V
+23,M,C,73,3.9,Y,P,D
+68,M,A,73,4.7,Y,R,B
+48,M,F,44,2.6,Y,N,D
+38,M,F,63,2.8,Y,P,V
+41,M,O,68,4.4,Y,P,C
+58,M,C,29,4.6,Y,S,V
+49,M,C,85,3.2,Y,S,P
+57,M,F,42,4.2,Y,T,H
+49,M,O,69,nan,Y,T,C
+50,M,C,62,3.9,Y,S,D
+28,M,A,48,4.7,Y,P,H
+38,M,F,68,4.5,Y,E,D
+33,M,A,36,3.3,Y,R,D
+30,M,C,63,3.3,Y,E,V
+43,M,F,39,4.6,Y,R,H
+43,M,F,78,3.6,Y,R,B
+36,M,F,99,4.8,Y,E,P
+36,M,C,31,4.8,Y,N,V
+64,M,F,45,2.9,Y,N,V
+59,M,C,30,2.8,Y,E,P
+55,M,F,24,3.2,Y,N,B
+42,M,F,22,3.9,Y,R,P
+61,M,C,63,4.3,Y,E,H
+28,M,A,40,2.7,Y,T,D
+65,M,C,20,5.0,Y,P,D
+27,M,A,20,3.7,Y,P,P
+41,M,C,80,3.9,Y,R,D
+21,M,C,87,3.9,Y,T,V
+61,M,C,46,3.1,Y,R,P
+19,M,A,49,nan,Y,N,B
+22,M,A,65,3.6,Y,P,V
+64,M,C,62,4.3,Y,S,P
+28,M,A,67,4.5,Y,N,H
+34,M,C,41,2.8,Y,T,D
+61,M,F,49,2.7,Y,R,H
+24,M,C,100,2.9,Y,N,V
+19,M,A,54,4.4,Y,T,B
+51,M,A,84,3.9,Y,R,D
+36,M,C,41,3.5,Y,S,B
+65,M,A,88,2.5,Y,P,H
+46,M,F,40,4.9,Y,E,P
+59,M,C,39,4.8,Y,R,P
+51,M,O,37,3.2,Y,N,D
+51,M,C,52,4.9,Y,S,H
+21,M,C,23,4.3,Y,N,B
+34,M,F,88,3.2,Y,E,H
+32,M,C,84,3.7,Y,S,C
+48,M,O,37,3.2,Y,P,C
+50,M,F,51,3.4,Y,N,H
+26,M,C,76,4.1,Y,E,B
+57,M,F,60,4.5,Y,N,D
+65,M,A,72,4.5,Y,N,P
+56,M,C,45,3.2,Y,R,B
+44,M,O,84,4.4,Y,P,D
+50,M,C,49,3.0,Y,P,D
+27,M,C,22,3.2,Y,R,H
+49,M,O,48,4.0,Y,P,D
+49,M,C,37,3.1,Y,N,H
+52,M,O,27,2.8,Y,N,H
+27,M,F,79,4.6,Y,N,H
+53,M,C,98,4.3,Y,E,C
+34,M,F,64,3.3,Y,S,B
+33,M,O,32,3.5,Y,T,D
+62,M,C,74,3.4,Y,R,V
+38,M,O,50,2.8,Y,R,V
+36,M,A,64,4.6,Y,P,D
+31,M,A,29,3.6,Y,E,V
+62,M,A,62,3.3,Y,P,P
+29,M,O,78,3.1,Y,T,H
+24,M,C,94,3.5,Y,E,B
+63,M,A,59,3.2,Y,E,C
+56,M,F,47,3.0,Y,E,B
+63,M,A,57,4.8,Y,E,V
+40,M,O,90,5.0,Y,P,H
+18,M,C,60,2.9,Y,R,D
+50,M,F,77,3.2,Y,E,D
+66,M,A,41,2.9,Y,P,B
+25,M,A,48,nan,Y,R,D
+65,M,O,65,2.6,Y,N,P
+53,M,C,62,3.5,Y,S,D
+61,M,F,99,4.4,Y,S,D
+67,M,C,58,3.4,Y,N,B
+59,M,A,43,4.2,Y,P,V
+55,M,F,93,3.6,Y,P,D
+21,M,C,50,3.0,Y,N,V
+44,M,C,88,4.0,Y,R,P
+65,M,C,33,4.4,Y,E,C
+65,M,C,99,4.1,Y,S,H
+54,M,O,76,3.6,Y,R,V
+56,M,A,97,4.6,Y,N,B
+58,M,C,68,3.2,Y,T,C
+54,M,F,79,4.8,Y,R,B
+58,M,C,86,4.8,Y,E,P
+48,M,A,68,5.0,Y,T,C
+19,M,C,52,3.7,Y,P,V
+69,M,F,90,4.6,Y,N,C
+58,M,F,41,3.7,Y,R,C
+49,M,C,80,4.1,Y,R,P
+32,M,C,100,2.7,Y,P,B
+40,M,O,77,4.9,Y,P,B
+25,M,C,78,4.0,Y,P,P
+70,M,C,94,4.7,Y,R,D
+69,M,C,23,2.8,Y,N,H
+45,M,C,20,4.9,Y,T,V
+29,M,C,86,4.2,Y,E,D
+47,M,F,60,3.0,Y,S,D
+28,M,C,70,3.4,Y,T,P
+64,M,A,39,4.6,Y,S,V
+47,M,A,37,4.2,Y,P,D
+60,M,F,29,3.2,Y,R,V
+67,M,O,35,4.4,Y,P,P
+35,M,C,83,2.5,Y,N,D
+30,M,F,77,3.6,Y,N,P
+23,M,F,37,4.5,Y,P,V
+70,M,A,69,3.4,Y,S,B
+21,M,C,66,3.2,Y,T,H
+51,M,F,26,4.2,Y,S,D
+22,M,A,63,5.0,Y,T,V
+32,M,A,38,4.7,Y,P,H
+37,M,F,58,4.2,Y,N,H
+31,M,A,46,3.4,Y,T,P
+44,M,A,92,4.4,Y,P,C
+40,M,A,32,4.2,Y,S,B
+27,M,A,90,4.5,Y,S,P
+47,M,C,23,2.8,Y,N,H
+41,M,A,25,3.3,Y,N,V
+51,M,C,54,4.6,Y,N,C
+53,M,C,72,2.5,Y,R,B
+43,M,A,33,4.7,Y,P,H
+67,M,A,43,4.6,Y,E,C
+61,M,O,51,2.6,Y,S,H
+68,M,A,85,4.0,Y,S,C
+67,M,F,100,2.6,Y,N,V
+29,M,A,72,4.6,Y,R,C
+50,M,A,57,2.6,Y,S,B
+61,M,O,94,4.0,Y,E,D
+19,M,A,34,4.6,Y,P,D
+33,M,A,89,3.7,Y,T,V
+51,M,A,27,4.4,Y,P,C
+69,M,C,63,4.0,Y,N,B
+19,M,F,70,4.7,Y,S,P
+55,M,C,87,3.4,Y,E,P
+49,M,A,79,4.0,Y,N,V
+31,M,A,79,3.9,Y,S,V
+42,M,F,44,4.1,Y,E,P
+69,M,C,85,nan,Y,T,C
+26,M,F,90,4.7,Y,S,D
+41,M,A,94,4.3,Y,T,D
+55,M,F,68,4.1,Y,P,H
+35,M,A,51,3.9,Y,N,V
+66,M,F,33,2.9,Y,E,D
+36,M,F,60,3.9,Y,S,P
+27,M,C,59,4.3,Y,T,H
+41,M,A,30,2.8,Y,P,B
+21,M,C,20,3.4,Y,T,H
+53,M,F,20,2.7,Y,E,P
+54,M,C,24,4.0,Y,T,C
+53,M,C,88,4.4,Y,P,D
+47,M,C,78,3.9,Y,T,C
+64,M,C,25,2.8,Y,T,D
+18,M,C,57,3.2,Y,N,B
+68,M,A,93,4.3,Y,N,H
+62,M,C,42,4.2,Y,E,V
+51,M,F,54,4.9,Y,S,V
+54,M,C,70,3.7,Y,E,C
+22,M,C,31,4.1,Y,P,C
+53,M,C,93,4.2,Y,P,P
+34,M,A,40,3.9,Y,N,B
+32,M,A,32,2.9,Y,N,V
+64,M,A,27,3.1,Y,R,V
+20,M,A,68,3.6,Y,T,H
+24,M,A,59,4.4,Y,T,V
+20,M,A,36,3.1,Y,R,V
+42,M,C,23,3.9,Y,S,P
+48,M,O,80,4.3,Y,R,P
+62,M,A,37,4.9,Y,P,V
+62,M,C,52,3.6,Y,T,H
+50,M,O,79,5.0,Y,T,C
+57,M,C,68,4.1,Y,P,C
+24,M,A,98,2.8,Y,E,V
+59,M,C,83,4.7,Y,E,C
+63,M,C,83,4.4,Y,E,P
+41,M,C,55,4.9,Y,T,C
+35,M,C,26,3.1,Y,R,D
+34,M,A,76,2.6,Y,S,B
+49,M,C,85,2.9,Y,E,B
+43,M,O,89,3.3,Y,R,V
+63,M,C,41,4.8,Y,N,H
+38,M,O,30,4.7,Y,E,H
+59,M,C,53,3.3,Y,T,H
+35,M,C,66,4.2,Y,R,V
+48,M,A,33,4.7,Y,P,B
+64,M,A,86,2.6,Y,T,H
+28,M,C,60,2.9,Y,T,V
+60,M,C,62,2.7,Y,E,P
+27,M,C,74,3.3,Y,P,D
+56,M,F,95,3.4,Y,E,V
+58,M,F,25,4.2,Y,E,P
+30,M,C,59,3.8,Y,T,C
+23,M,O,29,4.0,Y,S,C
+33,M,F,36,2.7,Y,R,B
+63,M,A,82,4.7,Y,E,D
+70,M,C,71,3.5,Y,S,H
+70,M,C,35,3.0,Y,T,V
+19,M,A,38,3.3,Y,R,B
+25,M,A,59,4.7,Y,P,V
+19,M,C,91,4.7,Y,E,C
+25,M,C,68,4.8,Y,S,B
+60,M,A,21,2.9,Y,S,P
+35,M,A,95,4.0,Y,T,D
+46,M,C,52,3.1,Y,R,H
+41,M,C,21,3.5,Y,T,V
+30,M,C,67,3.7,Y,N,D
+44,M,A,42,2.8,Y,S,H
+61,M,A,63,4.6,Y,R,D
+55,M,F,41,3.8,Y,S,D
+50,M,A,46,2.6,Y,T,P
+57,M,C,79,4.1,Y,S,P
+51,M,F,90,3.3,Y,N,D
+18,M,C,71,3.4,Y,P,H
+63,M,C,87,3.0,Y,S,V
+34,M,C,66,3.2,Y,E,P
+25,M,C,90,4.5,Y,R,H
+46,M,C,47,4.8,Y,E,D
+59,M,C,38,3.7,Y,N,V
+37,M,A,50,3.4,Y,P,H
+49,M,O,79,4.6,Y,S,D
+22,M,A,91,4.1,Y,S,P
+64,M,F,60,3.5,Y,T,B
+42,M,C,81,3.8,Y,N,B
+37,M,C,90,2.6,Y,E,B
+26,M,O,70,4.4,Y,P,D
+33,M,C,63,2.6,Y,E,D
+30,M,A,29,3.6,Y,E,V
+21,M,C,90,4.2,Y,E,V
+22,M,C,22,4.6,Y,S,B
+63,M,C,22,3.3,Y,N,V
+33,M,A,62,3.4,Y,R,D
+43,M,C,57,4.4,Y,N,D
+27,M,C,32,4.3,Y,P,H
+35,M,A,53,3.5,Y,E,P
+37,M,C,79,4.7,Y,P,V
+61,M,A,61,3.1,Y,S,D
+32,M,C,78,3.6,Y,N,B
+62,M,C,97,4.8,Y,N,V
+29,M,C,78,3.7,Y,N,P
+41,M,A,56,3.2,Y,E,P
+48,M,F,25,3.9,Y,S,V
+43,M,O,28,3.5,Y,R,P
+34,M,C,57,2.8,Y,E,H
+45,M,C,36,2.7,Y,T,D
+65,M,C,69,3.1,Y,E,B
+61,M,A,48,3.6,Y,T,H
+18,M,C,58,2.9,Y,T,C
+47,M,A,24,3.6,Y,P,P
+56,M,A,31,3.5,Y,T,V
+64,M,C,29,3.5,Y,R,V
+26,M,C,69,2.8,Y,N,C
+22,M,C,79,4.7,Y,R,B
+64,M,C,39,3.1,Y,E,D
+21,M,A,84,4.9,Y,R,H
+67,M,F,66,4.1,Y,N,D
+46,M,C,92,4.7,Y,S,V
+40,M,F,45,2.5,Y,R,C
+51,M,C,74,4.4,Y,N,B
+35,M,A,39,3.9,Y,R,B
+56,M,A,71,3.7,Y,S,D
+25,M,C,95,3.4,Y,R,V
+65,M,A,72,4.8,Y,R,C
+39,M,A,85,4.2,Y,T,P
+47,M,F,54,3.4,Y,P,V
+36,M,A,41,2.9,Y,P,D
+66,M,O,24,3.3,Y,R,P
+62,M,A,99,4.8,Y,S,H
+41,M,C,32,3.8,Y,P,D
+66,M,F,71,4.6,Y,T,B
+51,M,C,49,2.6,Y,N,C
+33,M,A,50,3.4,Y,R,H
+57,M,A,91,4.2,Y,E,B
+45,M,A,46,3.9,Y,S,D
+61,M,C,50,2.9,Y,T,C
+55,M,C,39,4.2,Y,R,D
+54,M,F,99,3.0,Y,P,H
+57,M,A,48,3.6,Y,N,P
+27,M,O,77,2.5,Y,N,H
+64,M,A,95,2.6,Y,E,V
+52,M,C,100,4.3,Y,P,P
+19,M,F,54,3.3,Y,E,C
+22,M,C,68,2.6,Y,N,B
+18,M,C,22,3.6,Y,R,D
+29,M,A,84,2.6,Y,E,D
+42,M,A,46,3.5,Y,S,C
+49,M,A,53,3.0,Y,P,P
+49,M,C,60,5.0,Y,S,V
+55,M,C,32,2.5,Y,E,V
+29,M,C,50,2.9,Y,P,D
+60,M,C,94,4.6,Y,E,H
+34,M,F,26,3.6,Y,R,H
+30,M,A,44,3.0,Y,P,C
+28,M,C,57,4.5,Y,S,H
+63,M,C,65,4.5,Y,N,P
+31,M,C,72,3.2,Y,P,B
+46,M,C,62,4.0,Y,N,P
+70,M,A,21,4.8,Y,E,B
+53,M,A,85,3.7,Y,R,V
+50,M,C,51,3.8,Y,P,B
+33,M,A,84,2.7,Y,S,C
+22,M,C,37,4.9,Y,P,B
+50,M,A,44,3.1,Y,T,P
+34,M,F,45,4.2,Y,N,V
+24,M,C,35,3.8,Y,R,C
+69,M,A,50,4.2,Y,P,D
+39,M,F,26,4.6,Y,P,V
+42,M,C,78,4.0,Y,T,C
+42,M,O,82,4.0,Y,T,D
+29,M,C,39,3.8,Y,T,P
+55,M,A,55,nan,Y,R,P
+32,M,C,20,2.6,Y,R,H
+25,M,A,29,4.9,Y,E,C
+38,M,C,41,3.5,Y,N,B
+32,M,C,38,2.8,Y,E,V
+43,M,F,47,2.6,Y,P,V
+41,M,C,30,3.7,Y,N,D
+56,M,C,56,2.7,Y,S,P
+27,M,C,89,3.3,Y,E,C
+46,M,F,96,4.6,Y,N,H
+48,M,F,81,4.9,Y,N,P
+52,M,A,83,4.9,Y,P,D
+18,M,F,35,2.7,Y,R,V
+64,M,F,56,3.2,Y,S,C
+54,M,A,45,2.9,Y,P,D
+31,M,C,62,3.8,Y,E,P
+30,M,A,84,3.0,Y,N,V
+26,M,C,24,3.9,Y,P,D
+25,M,A,21,4.7,Y,P,P
+59,M,C,91,4.9,Y,P,D
+55,M,A,36,4.8,Y,N,D
+56,M,F,39,2.5,Y,T,D
+62,M,C,39,3.9,Y,S,C
+35,M,C,59,3.4,Y,S,B
+51,M,A,27,2.5,Y,R,C
+61,M,C,94,3.0,Y,P,H
+27,M,A,94,3.6,Y,N,H
+54,M,C,94,3.6,Y,S,P
+31,M,F,51,4.1,Y,R,B
+24,M,C,62,3.7,Y,T,P
+42,M,C,57,nan,Y,T,C
+41,M,C,76,4.2,Y,E,C
+66,M,A,63,4.3,Y,E,H
+58,M,O,80,2.5,Y,E,H
+43,M,A,68,3.5,Y,S,C
+52,M,A,89,3.1,Y,R,C
+35,M,F,26,2.5,Y,N,D
+23,M,A,90,3.9,Y,P,H
+25,M,C,28,4.9,Y,E,H
+33,M,O,29,4.3,Y,E,C
+48,M,C,31,2.6,Y,R,D
+42,M,C,24,4.2,Y,T,P
+55,M,C,88,2.6,Y,P,P
+59,M,C,87,3.6,Y,E,P
+65,M,C,80,3.2,Y,E,P
+59,M,F,48,4.4,Y,E,V
+31,M,A,21,3.7,Y,S,V
+49,M,F,72,3.7,Y,E,D
+53,M,C,44,4.1,Y,S,P
+48,M,F,73,3.6,Y,P,C
+23,M,C,61,4.3,Y,E,P
+68,M,F,20,2.6,Y,P,V
+35,M,F,86,2.9,Y,E,D
+34,M,C,60,4.2,Y,N,D
+62,M,A,43,4.0,Y,R,H
+21,M,C,44,4.3,Y,R,V
+70,M,C,76,3.0,Y,T,C
+55,M,C,33,3.5,Y,E,D
+43,M,C,60,3.0,Y,S,D
+19,M,O,26,3.1,Y,R,P
+47,M,C,73,4.0,Y,N,D
+26,M,F,87,4.1,Y,S,H
+46,M,C,100,nan,Y,T,C
+19,M,O,84,4.9,Y,S,P
+49,M,F,41,3.9,Y,S,P
+51,M,C,59,3.9,Y,N,P
+64,M,C,26,4.8,Y,P,V
+67,M,A,69,2.7,Y,R,P
+37,M,O,20,3.1,Y,R,B
+40,M,C,83,3.2,Y,N,C
+38,M,A,54,2.7,Y,T,P
+66,M,C,66,2.5,Y,S,B
+47,M,A,42,2.6,Y,N,D
+56,M,C,33,2.9,Y,S,H
+51,M,F,77,4.2,Y,R,V
+25,M,O,65,4.4,Y,R,V
+37,M,F,39,4.1,Y,R,B
+41,M,A,51,3.8,Y,T,D
+64,M,A,65,4.9,Y,N,V
+23,M,A,89,4.9,Y,E,D
+62,M,C,76,4.1,Y,R,P
+39,M,A,75,3.1,Y,E,D
+52,M,F,61,2.7,Y,N,V
+50,M,F,35,3.8,Y,N,H
+28,M,F,37,4.3,Y,R,B
+67,M,C,91,4.1,Y,E,B
+41,M,C,99,4.4,Y,R,D
+19,M,C,54,3.6,Y,E,B
+70,M,A,47,3.3,Y,T,P
+49,M,A,77,nan,Y,E,H
+59,M,A,84,2.8,Y,R,V
+52,M,A,51,4.3,Y,T,C
+20,M,C,26,3.9,Y,P,P
+31,M,C,64,2.7,Y,R,D
+33,M,A,51,4.7,Y,E,V
+44,M,C,60,3.8,Y,R,D
+40,M,A,69,4.7,Y,N,D
+69,M,A,29,4.7,Y,E,H
+29,M,C,91,3.4,Y,E,V
+54,M,A,70,3.5,Y,T,B
+65,M,C,58,4.0,Y,S,P
+54,M,A,98,3.3,Y,R,B
+60,M,A,68,4.7,Y,T,H
+43,M,A,44,2.8,Y,N,H
+44,M,O,45,3.3,Y,E,P
+69,M,C,99,2.9,Y,R,P
+46,M,C,68,2.8,Y,S,V
+41,M,C,56,4.2,Y,S,D
+32,M,C,43,4.4,Y,E,C
+26,M,A,99,3.6,Y,R,P
+61,M,A,56,2.7,Y,E,P
+49,M,C,25,3.4,Y,E,C
+53,M,C,74,2.8,Y,T,B
+24,M,C,56,3.4,Y,N,B
+37,M,F,47,2.6,Y,N,H
+43,M,C,67,4.1,Y,S,V
+31,M,C,22,2.9,Y,P,C
+49,M,C,34,2.7,Y,S,V
+69,M,C,64,3.7,Y,S,B
+65,M,C,42,4.3,Y,T,H
+41,M,C,82,2.6,Y,T,D
+37,M,A,81,4.3,Y,R,H
+70,M,O,24,4.1,Y,E,P
+63,M,F,60,4.2,Y,S,C
+55,M,C,24,4.2,Y,T,P
+52,M,C,78,3.1,Y,S,H
+22,M,C,88,4.9,Y,E,H
+54,M,C,63,4.4,Y,E,H
+28,M,F,78,4.4,Y,S,V
+67,M,C,37,3.4,Y,P,H
+59,M,F,94,4.5,Y,T,D
+26,M,C,78,4.5,Y,P,C
+24,M,O,36,4.1,Y,S,B
+62,M,C,24,3.2,Y,S,D
+70,M,F,84,2.7,Y,P,D
+45,M,C,47,3.7,Y,E,B
+58,M,C,51,2.6,Y,P,B
+31,M,F,84,2.7,Y,R,H
+32,M,C,24,2.7,Y,E,V
+36,M,C,97,4.8,Y,R,D
+25,M,C,89,4.8,Y,N,C
+48,M,A,44,2.6,Y,P,P
+39,M,A,35,4.5,Y,T,P
+26,M,C,91,3.2,Y,E,P
+32,M,A,63,3.8,Y,N,V
+54,M,A,97,4.8,Y,E,H
+38,M,F,38,4.1,Y,P,V
+46,M,O,24,2.8,Y,N,P
+57,M,C,32,3.9,Y,P,H
+49,M,A,90,4.9,Y,E,V
+33,M,C,36,3.4,Y,S,V
+54,M,A,37,4.1,Y,R,P
+47,M,C,51,2.9,Y,E,B
+36,M,A,71,3.1,Y,T,P
+68,M,A,50,3.6,Y,T,V
+60,M,A,74,3.5,Y,S,C
+55,M,C,75,3.4,Y,R,P
+29,M,C,99,2.9,Y,T,D
+38,M,A,23,4.7,Y,P,H
+70,M,F,53,4.4,Y,R,C
+36,M,C,99,2.6,Y,S,H
+18,M,A,48,4.4,Y,S,V
+62,M,F,72,3.7,Y,N,D
+29,M,A,64,4.4,Y,S,D
+21,M,F,63,2.5,Y,T,C
+42,M,F,51,2.6,Y,N,V
+43,M,F,55,5.0,Y,P,C
+58,M,C,55,4.9,Y,E,H
+27,M,C,26,3.7,Y,P,H
+57,M,C,67,3.1,Y,N,B
+40,M,O,31,3.2,Y,E,P
+45,M,C,66,4.4,Y,R,H
+47,M,A,67,4.3,Y,N,C
+61,M,F,61,3.0,Y,S,C
+60,M,O,75,3.5,Y,T,B
+69,M,C,90,3.6,Y,T,B
+58,M,C,40,3.8,Y,T,B
+34,M,C,90,3.6,Y,E,C
+20,M,A,20,4.6,Y,E,H
+56,M,A,40,2.5,Y,S,C
+64,M,A,33,3.5,Y,P,D
+56,M,F,98,4.0,Y,R,P
+27,M,A,42,3.5,Y,N,C
+35,M,O,62,3.2,Y,S,P
+24,M,A,45,3.5,Y,R,V
+26,M,F,78,3.4,Y,R,C
+32,M,A,80,5.0,Y,E,B
+54,M,A,96,4.5,Y,P,B
+62,M,A,47,2.8,Y,E,P
+50,M,C,84,4.9,Y,T,P
+70,M,F,31,3.1,Y,P,B
+48,M,A,63,4.8,Y,P,H
+20,M,C,97,2.7,Y,S,B
+46,M,O,99,4.6,Y,E,D
+51,M,F,90,4.4,Y,P,H
+53,M,F,68,3.2,Y,E,D
+44,M,A,80,3.0,Y,T,V
+29,M,F,91,4.9,Y,S,B
+64,M,C,30,3.6,Y,E,H
+51,M,F,90,3.8,Y,N,B
+50,M,C,28,2.9,Y,S,D
+43,M,C,46,3.9,Y,E,B
+61,M,C,60,3.6,Y,S,D
+55,M,F,59,3.5,Y,P,B
+56,M,A,68,4.0,Y,P,H
+33,M,A,79,4.8,Y,T,H
+43,M,A,94,3.9,Y,P,D
+21,M,C,83,4.5,Y,N,V
+58,M,A,62,4.8,Y,S,C
+41,M,A,85,2.6,Y,P,P
+39,M,C,30,3.1,Y,E,V
+54,M,C,24,4.7,Y,T,C
+43,M,A,25,2.9,Y,N,D
+28,M,F,37,3.8,Y,E,C
+59,M,A,69,3.8,Y,T,V
+28,M,F,97,3.0,Y,S,D
+68,M,A,24,4.1,Y,S,H
+20,M,A,30,3.4,Y,E,B
+21,M,O,53,2.5,Y,E,C
+50,M,C,70,4.9,Y,N,H
+32,M,C,76,2.8,Y,S,V
+24,M,A,95,4.5,Y,E,D
+55,M,O,51,4.9,Y,T,P
+61,M,A,41,4.9,Y,P,H
+61,M,A,71,3.5,Y,R,B
+28,M,C,66,3.5,Y,R,V
+60,M,C,84,4.9,Y,R,C
+49,M,A,95,3.0,Y,E,P
+33,M,A,90,2.8,Y,N,H
+45,M,C,36,3.7,Y,S,H
+29,M,A,22,3.6,Y,T,V
+58,M,O,89,3.3,Y,N,D
+22,M,F,50,3.4,Y,R,H
+55,M,F,36,4.0,Y,R,C
+19,M,C,52,4.6,Y,R,B
+68,M,C,29,4.2,Y,N,B
+61,M,C,89,2.8,Y,E,V
+68,M,A,47,3.7,Y,T,B
+52,M,A,25,3.4,Y,S,D
+41,M,C,74,3.0,Y,E,B
+29,M,A,46,4.8,Y,S,V
+68,M,C,22,4.0,Y,N,H
+36,M,C,25,4.9,Y,N,H
+55,M,A,80,4.9,Y,N,C
+28,M,C,76,3.3,Y,T,D
+39,M,C,30,4.4,Y,N,B
+54,M,C,79,3.5,Y,T,P
+40,M,F,22,4.2,Y,S,V
+31,M,C,36,4.2,Y,S,C
+30,M,C,77,2.7,Y,S,V
+45,M,A,33,2.8,Y,P,H
+48,M,F,64,3.8,Y,N,V
+45,M,C,53,2.6,Y,R,P
+60,M,F,36,3.0,Y,T,C
+59,M,C,70,3.3,N,T,D
+18,M,C,96,4.9,N,E,P
+70,M,O,27,3.3,N,N,D
+20,M,C,64,2.9,N,T,V
+65,M,O,23,4.4,N,T,C
+29,M,A,33,3.1,N,N,B
+22,M,O,34,2.5,N,S,D
+27,M,C,35,2.6,N,N,D
+36,M,O,62,4.4,N,R,V
+59,M,F,75,2.6,N,N,D
+62,M,C,29,3.3,N,R,H
+34,M,A,28,3.5,N,E,C
+59,M,C,20,4.1,N,P,P
+49,M,O,96,4.0,N,P,P
+18,M,C,43,2.7,N,T,P
+55,M,C,94,2.5,N,S,C
+38,M,C,81,4.3,N,N,V
+50,M,A,75,3.3,N,R,D
+61,M,A,81,2.6,N,E,C
+48,M,C,92,nan,N,E,D
+22,M,A,96,4.0,N,P,C
+48,M,A,71,2.6,N,S,B
+57,M,A,50,4.9,N,N,D
+33,M,O,72,2.9,N,S,V
+58,M,O,28,3.7,N,S,P
+37,M,C,59,4.4,N,E,C
+18,M,O,33,4.4,N,R,B
+65,M,A,59,3.8,N,E,H
+62,M,A,30,4.5,N,S,C
+54,M,A,85,2.6,N,N,V
+35,M,A,97,3.3,N,P,H
+34,M,C,36,4.1,N,N,H
+25,M,A,85,3.0,N,P,V
+53,M,A,62,3.0,N,R,P
+45,M,C,71,3.4,N,N,B
+49,M,C,21,2.7,N,R,P
+40,M,A,61,3.8,N,N,P
+38,M,A,58,4.2,N,P,H
+44,M,C,80,4.7,N,P,C
+68,M,A,50,4.1,N,T,V
+60,M,F,48,4.2,N,T,V
+25,M,A,40,4.8,N,N,H
+19,M,O,34,3.0,N,R,B
+57,M,O,46,2.6,N,S,C
+58,M,A,27,3.2,N,P,B
+49,M,A,98,3.6,N,N,C
+19,M,C,73,2.6,N,N,B
+50,M,C,28,4.4,N,E,C
+30,M,A,76,3.0,N,R,H
+52,M,C,83,2.9,N,E,H
+35,M,C,23,4.3,N,R,D
+35,M,A,28,3.1,N,E,B
+33,M,C,83,3.0,N,N,V
+52,M,C,96,3.6,N,P,V
+69,M,F,62,2.8,N,P,B
+27,M,C,25,2.8,N,S,H
+66,M,C,97,nan,N,N,V
+28,M,C,61,3.0,N,S,H
+22,M,F,66,4.1,N,N,C
+69,M,C,67,4.6,N,R,P
+28,M,A,80,4.8,N,N,P
+55,M,C,25,2.6,N,N,B
+30,M,A,58,4.0,N,T,H
+67,M,A,96,4.2,N,E,P
+25,M,A,77,4.5,N,P,C
+49,M,A,65,4.9,N,S,P
+34,M,A,36,3.1,N,S,C
+22,M,F,84,4.0,N,N,D
+63,M,C,58,3.2,N,E,H
+70,M,A,62,4.3,N,T,C
+36,M,A,67,2.5,N,P,H
+42,M,C,20,nan,N,E,H
+27,M,F,90,2.7,N,T,B
+23,M,A,58,3.4,N,S,V
+50,M,C,53,4.8,N,P,D
+56,M,A,30,4.7,N,N,D
+37,M,C,65,4.7,N,E,V
+67,M,A,41,3.9,N,S,P
+67,M,C,73,3.7,N,E,B
+50,M,C,98,4.3,N,P,H
+36,M,F,36,4.1,N,T,H
+62,M,C,81,nan,N,E,V
+65,M,C,90,3.6,N,T,B
+23,M,A,83,4.8,N,R,H
+46,M,C,91,2.8,N,T,B
+18,M,C,36,4.7,N,E,V
+58,M,O,53,3.9,N,S,D
+31,M,C,39,2.6,N,P,C
+39,M,A,33,4.7,N,N,P
+69,M,C,76,3.5,N,P,V
+68,M,F,23,4.4,N,S,P
+41,M,C,54,4.4,N,T,B
+31,M,F,89,3.0,N,E,H
+48,M,F,38,4.2,N,S,B
+59,M,A,36,4.3,N,N,D
+34,M,C,66,2.6,N,P,P
+21,M,A,42,3.3,N,P,V
+29,M,A,36,2.7,N,N,V
+41,M,C,86,nan,N,E,C
+62,M,A,49,4.0,N,S,P
+27,M,C,41,4.0,N,R,B
+49,M,C,82,2.9,N,T,C
+67,M,C,53,2.6,N,E,P
+20,M,F,21,4.8,N,E,V
+37,M,A,66,4.4,N,S,H
+69,M,A,89,4.0,N,T,B
+66,M,A,55,3.6,N,T,V
+37,M,A,42,3.2,N,N,V
+63,M,C,52,3.1,N,T,P
+47,M,F,92,4.2,N,E,P
+26,M,C,56,3.0,N,T,D
+68,M,C,96,4.2,N,S,P
+51,M,C,64,2.9,N,N,V
+48,M,C,48,3.7,N,P,V
+60,M,C,83,3.6,N,R,P
+68,M,A,91,3.6,N,S,D
+25,M,A,94,4.5,N,T,H
+57,M,C,62,3.2,N,E,H
+41,M,C,55,3.9,N,N,D
+59,M,O,68,4.6,N,P,B
+44,M,A,76,2.5,N,E,H
+42,M,A,31,4.3,N,E,B
+35,M,A,81,4.1,N,P,P
+36,M,C,83,nan,N,R,P
+54,M,C,21,4.8,N,S,D
+37,M,C,22,4.9,N,E,D
+20,M,C,33,2.8,N,R,B
+23,M,C,23,4.9,N,S,H
+61,M,C,96,3.5,N,R,B
+37,M,A,21,3.8,N,E,P
+23,M,C,39,4.5,N,T,C
+63,M,A,73,3.4,N,E,C
+47,M,C,64,3.9,N,S,C
+63,M,C,68,4.1,N,T,C
+56,M,A,89,3.0,N,E,C
+68,M,C,29,3.3,N,N,C
+64,M,C,97,nan,N,R,D
+62,M,C,45,4.3,N,N,C
+34,M,C,70,4.1,N,R,V
+49,M,O,56,4.0,N,T,V
+40,M,O,55,5.0,N,T,C
+50,M,C,46,3.1,N,T,C
+25,M,A,95,4.0,N,T,V
+30,M,A,88,3.2,N,T,B
+54,M,F,92,3.9,N,S,P
+40,M,C,49,3.9,N,T,H
+49,M,F,89,4.5,N,R,D
+27,M,O,22,4.4,N,P,P
+27,M,F,61,3.1,N,T,V
+48,M,A,29,2.9,N,S,V
+40,M,F,82,3.7,N,R,B
+67,M,A,94,3.2,N,T,C
+52,M,A,99,3.5,N,S,B
+22,M,A,59,3.0,N,R,V
+62,M,F,90,4.1,N,N,C
+20,M,F,100,nan,N,T,D
+41,M,C,62,3.8,N,N,B
+34,M,A,78,4.1,N,N,H
+23,M,C,94,4.6,N,P,V
+32,M,F,74,2.5,N,R,C
+68,M,A,52,3.7,N,E,D
+30,M,O,81,3.8,N,R,H
+66,M,C,20,2.6,N,T,C
+62,M,C,32,3.7,N,R,V
+50,M,F,63,2.6,N,R,H
+55,M,F,79,3.1,N,P,H
+19,M,C,23,2.5,N,N,C
+67,M,A,64,nan,N,E,B
+18,M,C,69,4.5,N,S,H
+58,M,C,69,3.4,N,P,B
+69,M,C,24,3.9,N,R,B
+62,M,C,50,3.7,N,P,V
+28,M,A,97,2.6,N,R,D
+53,M,F,91,3.4,N,P,V
+27,M,C,37,4.9,N,P,B
+55,M,O,55,3.9,N,E,H
+34,M,A,52,3.6,N,E,B
+25,M,A,80,nan,N,S,V
+66,M,C,79,4.0,N,T,C
+57,M,A,23,3.6,N,R,D
+46,M,C,73,3.5,N,N,V
+38,M,A,99,4.1,N,P,B
+23,M,C,22,3.0,N,P,P
+42,M,A,68,4.4,N,P,D
+25,M,C,92,4.4,N,T,C
+55,M,C,77,3.7,N,E,V
+62,M,O,37,4.8,N,S,D
+41,M,A,79,2.9,N,P,D
+58,M,C,51,3.1,N,E,C
+56,M,C,27,4.0,N,N,B
+25,M,C,23,3.0,N,P,D
+70,M,C,76,3.9,N,T,H
+42,M,C,31,3.4,N,S,B
+27,M,C,60,2.7,N,S,H
+65,M,C,99,nan,N,E,V
+62,M,A,37,3.0,N,R,C
+62,M,F,50,4.5,N,E,V
+52,M,C,26,4.1,N,R,H
+56,M,C,86,5.0,N,N,C
+28,M,F,41,4.0,N,S,H
+39,M,F,23,4.9,N,E,P
+54,M,F,56,3.3,N,T,C
+30,M,A,68,4.1,N,S,H
+45,M,O,48,3.6,N,E,H
+68,M,C,67,3.0,N,R,H
+47,M,F,87,4.1,N,T,D
+68,M,C,64,3.9,N,S,C
+63,M,C,93,4.1,N,P,D
+20,M,C,29,2.8,N,N,C
+29,M,F,62,4.8,N,P,V
+41,M,C,70,4.6,N,T,C
+52,M,C,92,2.5,N,N,V
+32,M,C,79,2.7,N,N,B
+20,M,C,31,4.0,N,S,D
+47,M,C,83,2.7,N,S,H
+23,M,O,88,2.9,N,N,D
+43,M,A,53,3.0,N,S,P
+67,M,C,98,3.3,N,S,H
+70,M,A,57,4.3,N,P,P
+35,M,F,80,4.4,N,E,B
+41,M,C,29,4.1,N,N,C
+54,M,A,73,3.1,N,T,P
+55,M,C,32,4.5,N,S,P
+51,M,F,68,4.8,N,N,B
+19,M,C,97,5.0,N,E,V
+28,M,C,98,2.8,N,N,V
+63,M,C,56,3.7,N,E,D
+30,M,C,78,4.4,N,T,V
+29,M,A,81,4.5,N,P,V
+24,M,C,68,3.0,N,R,V
+69,M,C,94,3.9,N,T,D
+65,M,C,93,3.9,N,E,P
+64,M,A,99,3.5,N,N,B
+40,M,A,49,4.9,N,N,D
+24,M,C,28,3.4,N,S,P
+66,M,A,93,4.1,N,S,P
+35,M,O,24,2.9,N,N,P
+67,M,C,35,3.4,N,R,P
+69,M,F,68,3.2,N,T,D
+26,M,A,61,nan,N,R,B
+23,M,C,74,4.1,N,S,D
+27,M,C,64,4.5,N,S,H
+30,M,F,60,2.8,N,S,P
+48,M,C,29,2.8,N,E,H
+44,M,F,85,4.6,N,S,V
+29,M,C,81,3.0,N,R,B
+29,M,A,23,3.6,N,T,V
+67,M,C,100,4.5,N,N,C
+42,M,C,54,5.0,N,E,D
+23,M,F,25,2.9,N,N,C
+34,M,C,32,3.1,N,N,C
+64,M,A,63,4.0,N,T,P
+31,M,C,56,4.5,N,E,P
+54,M,C,33,4.5,N,N,P
+23,M,O,32,3.1,N,E,P
+59,M,C,38,4.4,N,N,C
+32,M,C,21,4.7,N,P,H
+43,M,C,59,3.1,N,P,C
+32,M,F,87,4.2,N,E,V
+66,M,C,79,3.0,N,P,B
+70,M,F,28,nan,N,R,C
+42,M,F,67,3.4,N,R,D
+56,M,C,75,4.2,N,T,D
+28,M,A,32,4.6,N,S,D
+28,M,C,43,2.8,N,R,H
+52,M,C,93,2.7,N,E,C
+65,M,A,24,4.0,N,S,B
+56,M,A,31,3.1,N,R,D
+59,M,C,84,3.7,N,E,B
+23,M,C,74,4.0,N,N,B
+58,M,C,62,4.6,N,S,D
+39,M,A,77,3.8,N,R,C
+28,M,A,73,3.5,N,E,H
+40,M,F,50,nan,N,R,H
+52,M,O,40,2.8,N,S,H
+37,M,C,97,3.7,N,S,B
+70,M,A,63,3.3,N,E,P
+30,M,A,65,2.9,N,S,P
+38,M,C,91,3.2,N,S,P
+66,M,C,60,4.3,N,P,B
+29,M,C,69,2.7,N,N,B
+46,M,O,52,nan,N,P,V
+56,M,F,49,4.8,N,T,C
+23,M,F,85,4.8,N,P,D
+37,M,C,86,3.4,N,E,C
+56,M,A,51,2.6,N,S,P
+36,M,A,56,5.0,N,N,B
+40,M,A,72,4.4,N,N,D
+26,M,C,27,nan,N,S,B
+57,M,A,43,3.4,N,T,B
+68,M,F,56,3.4,N,S,B
+56,M,C,37,4.9,N,N,H
+40,M,C,21,3.6,N,S,V
+44,M,C,91,3.0,N,R,V
+44,M,C,95,3.9,N,T,B
+19,M,A,54,3.2,N,S,C
+21,M,C,36,3.2,N,N,H
+31,M,A,71,4.3,N,N,H
+30,M,O,31,2.8,N,T,B
+65,M,A,89,4.5,N,N,C
+39,M,C,83,4.1,N,N,H
+64,M,A,42,3.6,N,T,B
+59,M,C,91,3.0,N,T,P
+49,M,O,61,4.0,N,R,B
+24,M,A,66,3.5,N,N,H
+19,M,A,22,2.5,N,P,V
+27,M,C,68,4.3,N,P,B
+56,M,C,43,2.8,N,E,B
+49,M,C,32,3.7,N,N,D
+41,M,O,46,4.3,N,E,H
+36,M,C,90,4.0,N,E,P
+68,M,A,75,4.7,N,E,H
+28,M,A,69,4.5,N,P,B
+45,M,A,40,3.1,N,R,C
+60,M,A,63,3.8,N,E,H
+21,M,C,36,4.9,N,E,H
+32,M,F,75,3.2,N,S,V
+27,M,A,67,nan,N,T,B
+40,M,C,64,2.8,N,P,C
+64,M,C,61,4.0,N,T,P
+18,M,A,40,2.6,N,P,H
+22,M,A,97,2.7,N,R,B
+42,M,F,31,4.1,N,T,C
+57,M,F,65,5.0,N,R,P
+33,M,A,54,3.0,N,N,V
+37,M,O,49,3.6,N,R,V
+21,M,C,64,2.8,N,T,V
+51,M,F,35,4.6,N,S,H
+30,M,F,86,2.9,N,S,V
+68,M,O,55,4.8,N,E,B
+36,M,A,58,3.3,N,E,V
+46,M,F,96,4.6,N,S,B
+41,M,A,64,2.6,N,P,B
+68,M,O,56,4.0,N,N,D
+21,M,C,85,3.8,N,S,C
+62,M,C,23,3.9,N,E,H
+59,M,A,72,2.6,N,P,D
+25,M,A,38,4.3,N,S,D
+53,M,C,29,3.6,N,E,C
+31,M,A,46,4.2,N,E,V
+46,M,A,58,3.9,N,E,P
+26,M,O,43,4.7,N,N,H
+47,M,A,32,2.8,N,N,P
+37,M,C,30,3.0,N,N,D
+55,M,A,67,4.7,N,P,P
+30,M,C,45,2.5,N,R,C
+19,M,A,81,3.1,N,P,V
+36,M,A,23,3.6,N,N,C
+23,M,F,59,3.5,N,T,P
+62,M,A,21,3.1,N,E,P
+26,M,A,20,3.6,N,P,C
+36,M,A,28,3.5,N,N,D
+33,M,C,100,2.7,N,P,C
+32,M,C,46,3.6,N,E,D
+56,M,A,61,4.5,N,E,C
+58,M,C,58,4.1,N,R,V
+34,M,A,50,4.2,N,S,H
+61,M,A,93,4.0,N,P,D
+48,M,C,24,2.8,N,P,V
+25,M,C,100,2.6,N,T,V
+51,M,C,79,2.7,N,P,B
+29,M,C,51,4.5,N,P,C
+54,M,A,90,3.7,N,R,C
+48,M,F,56,3.4,N,R,H
+62,M,C,25,4.6,N,S,D
+18,M,C,75,4.1,N,T,V
+43,M,A,75,2.6,N,R,D
+22,M,C,53,4.6,N,P,P
+68,M,C,100,3.0,N,S,B
+44,M,C,27,3.4,N,R,P
+51,M,F,60,3.5,N,R,V
+66,M,O,23,3.5,N,S,B
+59,M,O,40,3.7,N,N,C
+60,M,C,38,4.8,N,R,P
+31,M,A,90,4.9,N,P,C
+20,M,C,97,4.9,N,E,P
+24,M,C,38,4.7,N,S,C
+48,M,F,30,4.9,N,R,C
+39,M,C,88,2.9,N,E,V
+34,M,A,33,4.4,N,E,D
+70,M,C,60,3.2,N,N,D
+59,M,C,64,4.6,N,R,D
+45,M,A,95,4.0,N,S,H
+35,M,F,83,3.7,N,R,P
+69,M,F,97,4.2,N,R,H
+58,M,O,38,2.9,N,S,D
+25,M,F,48,4.8,N,N,H
+27,M,F,76,4.4,N,S,V
+34,M,C,25,3.4,N,R,V
+53,M,C,92,2.8,N,T,C
+58,M,F,47,4.2,N,N,H
+32,M,C,36,3.8,N,E,H
+64,M,A,51,3.1,N,T,C
+63,M,C,35,3.2,N,E,C
+23,M,C,57,3.0,N,N,P
+64,M,F,95,3.6,N,R,C
+18,M,C,41,2.5,N,P,H
+25,M,C,44,3.4,N,R,H
+54,M,O,34,2.5,N,N,P
+60,M,O,25,4.7,N,T,B
+36,M,F,93,3.2,N,T,B
+66,M,F,50,2.9,N,R,C
+60,M,C,79,4.9,N,E,P
+59,M,O,100,2.7,N,P,P
+58,M,C,57,4.7,N,E,V
+35,M,C,28,2.9,N,T,V
+20,M,F,35,4.8,N,E,V
+70,M,F,85,4.6,N,S,V
+54,M,A,95,5.0,N,T,V
+38,M,F,90,4.8,N,T,V
+54,M,A,49,4.9,N,P,B
+33,M,A,92,4.6,N,T,B
+46,M,A,72,3.9,N,P,H
+58,M,C,71,4.5,N,P,P
+30,M,A,27,4.7,N,P,D
+42,M,A,39,3.9,N,E,H
+28,M,A,98,4.4,N,S,P
+43,M,F,27,3.9,N,N,H
+31,M,A,71,2.8,N,T,V
+39,M,A,24,3.5,N,P,H
+69,M,C,63,4.3,N,E,C
+31,M,C,72,3.9,N,N,C
+44,M,C,61,4.0,N,E,H
+39,M,A,56,4.1,N,N,C
+24,M,A,32,4.3,N,S,P
+28,M,A,23,4.2,N,R,V
+48,M,O,100,4.0,N,S,B
+39,M,A,74,3.6,N,E,H
+64,M,C,33,3.3,N,S,P
+28,M,A,67,4.1,N,T,B
+39,M,A,61,4.7,N,N,D
+49,M,C,46,4.4,N,P,V
+22,M,A,56,3.4,N,S,H
+25,M,F,73,5.0,N,R,V
+40,M,C,44,4.6,N,P,P
+23,M,A,44,4.0,N,S,C
+24,M,A,26,4.1,N,N,V
+66,M,F,52,4.9,N,E,V
+27,M,C,54,2.7,N,R,B
+62,M,O,38,4.5,N,R,V
+70,M,A,44,2.7,N,S,C
+43,M,C,76,3.0,N,N,B
+45,M,A,23,4.5,N,N,P
+63,M,C,98,5.0,N,S,V
+69,M,O,33,3.8,N,T,D
+59,M,C,32,3.1,N,S,V
+19,M,F,85,3.4,N,R,C
+63,M,C,69,4.8,N,N,D
+37,M,C,55,2.7,N,S,D
+37,M,C,66,3.2,N,P,H
+50,M,O,30,3.9,N,T,H
+60,M,O,80,4.2,N,N,B
+46,M,A,20,3.0,N,E,H
+35,M,C,30,3.0,N,T,P
+66,M,C,86,3.7,N,T,V
+35,M,C,84,4.4,N,P,H
+20,M,C,54,4.6,N,R,D
+55,M,C,30,3.0,N,R,V
+34,M,C,91,3.6,N,E,C
+60,M,F,23,3.9,N,S,P
+22,M,C,35,4.1,N,R,H
+26,M,F,90,3.9,N,T,V
+39,M,C,93,3.9,N,T,H
+20,M,C,68,4.5,N,E,B
+57,M,A,41,3.4,N,S,H
+68,M,A,73,4.1,N,N,V
+50,M,A,73,4.9,N,N,P
+21,M,A,66,4.4,N,T,H
+29,M,A,59,2.7,N,T,B
+38,M,C,72,4.8,N,R,D
+54,M,C,88,3.3,N,T,D
+22,M,C,76,4.4,N,R,H
+29,M,A,31,4.6,N,T,H
+41,M,O,22,3.1,N,N,P
+26,M,A,75,4.5,N,T,D
+69,M,C,75,4.0,N,P,V
+20,M,A,63,3.1,N,R,C
+59,M,O,21,3.9,N,N,B
+63,M,A,83,4.5,N,N,P
+68,M,O,46,4.4,N,N,P
+50,M,F,59,3.6,N,T,B
+55,M,C,66,3.4,N,R,V
+36,M,F,74,4.0,N,T,V
+18,M,A,82,2.6,N,P,H
+68,M,F,89,3.2,N,N,V
+56,M,C,65,3.2,N,S,V
+32,M,A,55,5.0,N,T,H
+28,M,C,95,2.9,N,N,B
+24,M,A,77,2.9,N,P,H
+59,M,C,44,3.5,N,N,P
+56,M,C,89,4.0,N,S,V
+30,M,A,24,3.9,N,S,D
+48,M,A,43,4.9,N,P,B
+60,M,F,51,3.8,N,E,B
+46,M,A,46,3.5,N,S,H
+69,M,C,32,3.7,N,P,B
+19,M,F,55,2.9,N,T,D
+66,M,A,26,2.8,N,R,B
+64,M,A,29,3.7,N,T,C
+54,M,C,49,3.0,N,E,C
+27,M,C,45,4.8,N,R,D
+64,M,C,48,2.7,N,S,H
+43,M,C,47,4.5,N,R,H
+43,M,C,57,2.7,N,S,C
+27,M,A,34,3.5,N,N,P
+35,M,A,75,3.5,N,E,C
+43,M,A,94,4.5,N,P,P
+57,M,A,84,3.8,N,R,D
+50,M,A,38,3.8,N,S,B
+37,M,A,75,3.2,N,N,V
+68,M,C,44,4.3,N,N,H
+22,M,A,33,4.5,N,N,D
+58,M,A,93,4.2,N,R,P
+48,M,F,99,3.0,N,R,H
+30,M,A,33,4.1,N,S,H
+51,M,F,76,4.6,N,P,D
+20,M,C,63,2.9,N,S,D
+30,M,C,41,4.8,N,N,B
+28,M,A,88,4.5,N,N,B
+37,M,C,92,3.4,N,T,D
+36,M,C,31,4.3,N,T,D
+18,M,C,25,4.2,N,R,P
+52,M,C,28,3.6,N,N,H
+56,M,C,75,3.7,N,T,P
+68,M,F,34,4.0,N,S,V
+62,M,C,97,4.9,N,T,P
+35,M,O,80,3.1,N,R,B
+65,M,F,71,3.7,N,S,H
+69,M,A,77,4.2,N,R,H
+28,M,A,41,2.5,N,N,H
+37,M,A,92,4.3,N,N,V
+41,M,C,95,3.1,N,P,C
+37,M,C,25,3.0,N,N,D
+25,M,F,77,4.0,N,E,B
+41,M,C,99,3.5,N,R,C
+48,M,A,24,3.2,N,N,V
+42,M,F,72,2.7,N,P,H
+54,M,C,80,3.0,N,R,P
+18,M,C,100,2.9,N,N,P
+56,M,F,83,3.3,N,R,B
+61,M,C,95,4.9,N,T,B
+40,M,A,41,3.7,N,P,H
+34,M,A,35,3.5,N,S,D
+42,M,A,30,4.7,N,P,D
+43,M,A,21,2.6,N,P,B
+47,M,A,85,4.1,N,E,V
+48,M,C,54,2.8,N,T,D
+20,M,F,26,4.7,N,N,P
+65,M,C,59,2.9,N,P,C
+54,M,A,48,2.8,N,R,V
+23,M,C,98,4.3,N,N,D
+18,M,C,92,4.8,N,T,C
+70,M,A,46,3.4,N,N,C
+55,M,C,21,4.3,N,S,P
+49,M,C,72,2.7,N,R,D
+26,M,F,58,4.6,N,N,B
+33,M,C,93,4.1,N,S,V
+20,M,C,31,3.4,N,T,P
+41,M,C,26,4.5,N,N,D
+18,M,C,68,4.4,N,S,V
+26,M,A,31,4.0,N,N,C
+30,M,C,41,3.4,N,R,H
+64,M,A,62,3.2,N,S,H
+26,M,A,41,3.4,N,S,H
+43,M,C,64,4.3,N,S,C
+63,M,F,72,5.0,N,S,D
+57,M,A,78,3.5,N,P,V
+25,M,A,47,3.1,N,T,P
+68,M,A,46,3.9,N,T,D
+31,M,C,43,4.0,N,P,B
+64,M,A,58,3.5,N,N,D
+38,M,C,32,3.6,N,R,P
+34,M,C,45,3.0,N,N,P
+32,M,F,35,2.6,N,N,C
+69,M,A,21,2.9,N,N,C
+45,M,C,64,3.1,N,N,H
+35,M,C,88,3.3,N,N,V
+63,M,F,48,2.9,N,P,V
+65,M,C,36,3.9,N,T,B
+35,M,A,28,4.7,N,T,D
+54,M,C,80,4.4,N,T,D
+28,M,O,23,3.6,N,P,H
+68,M,A,24,3.2,N,S,H
+58,M,F,22,4.0,N,R,H
+35,M,C,21,3.5,N,N,V
+68,M,O,51,4.6,N,R,V
+41,M,A,65,3.3,N,R,P
+65,M,A,51,4.0,N,T,P
+50,M,C,32,3.4,N,R,B
+18,M,O,70,4.2,N,P,P
+38,M,A,77,3.9,N,T,P
+68,M,O,90,3.9,N,N,D
+53,M,A,36,2.8,N,S,V
+58,M,A,77,3.7,N,S,B
+34,M,F,78,4.9,N,P,D
+36,M,C,69,2.6,N,E,C
+58,M,C,63,4.9,N,R,C
+60,M,A,36,3.4,N,N,C
+59,M,O,80,3.9,N,S,D
+65,M,C,35,4.0,N,N,B
+31,M,A,93,3.0,N,T,D
+43,M,A,25,2.6,N,P,C
+37,M,C,81,3.2,N,N,P
+21,M,C,42,2.6,N,T,P
+69,M,C,36,3.2,N,P,D
+32,M,A,66,4.1,N,P,H
+53,M,A,37,3.9,N,N,V
+59,M,C,45,4.1,N,S,V
+64,M,A,86,2.7,N,T,D
+63,M,A,24,4.6,N,R,D
+43,M,C,22,3.5,N,S,H
+19,M,A,53,5.0,N,N,P
+40,M,O,41,3.4,N,N,V
+51,M,C,64,3.1,N,P,P
+51,M,A,40,3.4,N,T,B
+66,M,C,33,4.0,N,S,D
+42,M,C,59,2.7,N,P,B
+22,M,C,73,3.6,N,R,H
+31,M,C,22,4.0,N,R,B
+18,M,F,73,3.8,N,R,V
+21,M,C,62,3.4,N,N,V
+35,M,O,56,3.2,N,R,D
+35,M,C,90,4.7,N,N,C
+27,M,A,44,3.1,N,N,B
+65,M,C,35,3.3,N,N,D
+41,M,C,71,4.8,N,T,V
+60,M,C,52,4.5,N,N,D
+61,M,F,37,3.4,N,P,C
+24,M,F,95,3.7,N,T,C
+65,M,C,97,4.9,N,T,C
+23,M,O,57,3.5,N,N,V
+30,M,C,93,4.6,N,S,P
+33,M,C,48,4.6,N,S,P
+22,M,A,75,4.2,N,P,H
+67,M,C,70,3.7,N,R,P
+28,M,A,26,3.0,N,N,V
+32,M,C,73,4.6,N,P,B
+40,M,O,30,3.2,N,R,H
+64,M,F,61,3.5,N,N,H
+56,M,A,75,2.6,N,S,H
+63,M,O,88,4.9,N,S,B
+20,M,C,67,2.7,N,E,D
+54,M,A,95,4.7,N,T,P
+31,M,A,69,4.0,N,R,C
+36,M,C,87,3.5,N,N,C
+25,M,A,41,4.8,N,S,B
+20,M,C,67,4.0,N,R,D
+62,M,C,70,4.1,N,E,B
+69,M,A,41,3.8,N,N,D
+54,M,C,83,5.0,N,E,B
+39,M,A,22,4.0,N,N,B
+56,M,F,20,3.9,N,P,H
+39,M,A,29,3.4,N,T,V
+37,M,A,87,3.0,N,S,V
+25,M,C,81,4.9,N,T,H
+35,M,F,58,3.2,N,E,C
+45,M,C,83,3.8,N,S,B
+19,M,C,59,3.8,N,P,C
+21,M,C,93,4.7,N,E,C
+65,M,C,87,3.8,N,T,H
+49,M,O,22,4.6,N,R,P
+30,M,C,71,4.4,N,S,H
+23,M,C,69,3.4,N,T,P
+69,M,C,47,4.7,N,S,H
+29,M,C,50,2.9,N,E,D
+54,M,C,96,3.4,N,T,P
+45,M,C,39,3.2,N,R,V
+25,M,C,84,2.8,N,E,D
+34,M,A,28,4.3,N,R,C
+46,M,C,51,3.3,N,S,H
+70,M,A,20,3.3,N,S,P
+42,M,F,72,3.3,N,R,P
+45,M,A,33,3.0,N,N,V
+57,M,O,28,2.8,N,E,D
+49,M,C,53,4.0,N,E,P
+23,M,C,48,4.3,N,E,D
+47,M,C,21,3.8,N,P,V
+23,M,C,22,4.2,N,R,C
+21,M,A,87,3.1,N,N,H
+45,M,A,50,2.6,N,R,H
+67,M,C,85,3.4,N,E,C
+31,M,C,98,3.1,N,N,P
+58,M,C,34,3.6,N,E,V
+57,M,C,61,2.6,N,T,H
+42,M,A,98,4.2,N,P,V
+60,M,A,61,2.9,N,T,C
+21,M,A,98,4.2,N,E,H
+69,M,C,21,3.3,N,N,B
+41,M,C,51,3.6,N,N,B
+51,M,F,80,4.3,N,E,V
+23,M,C,72,3.3,N,S,B
+57,M,A,63,3.0,N,S,P
+40,M,C,27,3.6,N,P,H
+65,M,A,44,3.1,N,P,B
+61,M,O,23,2.9,N,E,V
+34,M,C,93,3.9,N,T,B
+43,M,C,70,3.2,N,T,D
+31,M,A,85,3.1,N,E,V
+57,M,C,40,3.2,N,T,H
+34,M,F,29,3.3,N,P,V
+25,M,C,27,4.8,N,N,C
+66,M,C,93,3.8,N,T,C
+56,M,A,20,4.6,N,N,H
+49,M,A,55,2.8,N,R,B
+19,M,C,94,3.6,N,S,D
+27,M,A,56,4.3,N,R,V
+68,M,C,58,4.0,N,N,P
+20,M,C,44,3.5,N,S,P
+21,M,C,95,4.9,N,T,H
+36,M,F,42,3.1,N,E,B
+37,M,A,93,3.9,N,P,P
+61,M,C,56,3.0,N,P,V
+68,M,C,88,4.1,N,T,V
+60,M,C,54,4.3,N,T,H
+69,M,A,89,3.8,N,T,D
+25,M,F,45,3.9,N,T,P
+32,M,C,75,4.3,N,R,H
+53,M,A,22,4.3,N,E,B
+46,M,C,82,4.7,N,P,C
+58,M,F,34,3.1,N,T,B
+21,M,O,92,2.7,N,R,P
+46,M,C,78,3.7,N,E,P
+18,M,O,47,3.3,N,T,H
+56,M,O,64,3.4,N,R,V
+18,M,F,44,4.7,N,R,H
+49,M,A,94,4.9,N,P,D
+29,M,A,62,4.3,N,R,V
+67,M,A,81,4.2,N,N,C
+31,M,C,33,3.7,N,E,B
+52,M,C,88,2.7,N,N,B
+42,M,A,49,3.3,N,R,C
+32,M,A,31,4.8,N,S,D
+47,M,A,29,4.1,N,N,V
+45,M,O,34,4.6,N,T,V
+20,M,C,38,4.9,N,T,B
+66,M,C,41,3.1,N,P,H
+52,M,C,34,3.0,N,T,D
+50,M,A,26,3.7,N,P,P
+62,M,C,98,4.0,N,P,H
+38,M,F,59,3.0,N,E,D
+65,M,A,92,3.8,N,P,H
+60,M,A,40,3.7,N,E,D
+68,M,C,20,4.0,N,T,D
+62,M,C,35,3.1,N,P,V
+62,M,A,35,3.9,N,T,V
+40,M,C,82,3.7,N,E,H
+32,M,C,48,3.9,N,E,V
+22,M,O,58,2.7,N,E,C
+33,M,C,57,3.9,N,E,D
+57,M,C,96,2.6,N,P,V
+60,M,F,97,3.5,N,R,V
+30,M,C,42,4.4,N,N,C
+41,M,C,62,4.9,N,P,D
+58,M,A,67,3.9,N,S,V
+34,M,F,46,3.5,N,S,V
+67,M,O,71,4.3,N,N,D
+58,M,A,99,3.4,N,R,D
+41,M,C,28,2.7,N,S,H
+42,M,A,77,3.6,N,S,B
+50,M,F,63,4.9,N,E,P
+40,M,C,62,3.5,N,R,P
+32,M,C,92,3.8,N,R,H
+51,M,F,72,4.5,N,T,C
+26,M,A,79,4.0,N,E,H
+32,M,C,27,4.7,N,R,H
+58,M,A,39,3.8,N,E,D
+51,M,C,86,4.5,N,N,H
+19,M,C,94,5.0,N,E,P
+57,M,C,53,2.8,N,E,P
+66,M,C,85,4.4,N,S,H
+62,M,C,50,4.7,N,R,B
+58,M,C,47,3.8,N,E,H
+23,M,F,75,4.9,N,N,C
+45,M,C,60,4.2,N,E,D
+20,M,C,36,4.9,N,T,B
+33,M,O,80,3.9,N,E,H
+30,M,A,96,4.9,N,T,C
+50,M,A,80,4.8,N,E,V
+62,M,C,71,3.3,N,R,B
+69,M,A,29,4.6,N,R,H
+34,M,A,53,4.5,N,T,P
+49,M,C,35,4.1,N,T,V
+65,M,A,75,3.2,N,T,C
+66,M,C,52,4.2,N,T,C
+41,M,A,77,4.8,N,R,V
+37,M,A,24,4.1,N,N,C
+32,M,C,78,3.7,N,P,H
+42,M,F,98,2.6,N,P,B
+31,M,C,57,3.0,N,S,P
+61,M,A,78,4.4,N,E,D
+36,M,O,76,4.7,N,N,C
+60,M,C,26,2.7,N,T,C
+51,M,F,78,2.8,N,T,B
+68,M,A,53,2.9,N,S,V
+46,M,F,100,4.4,N,R,C
+19,M,C,73,2.7,N,E,H
+30,M,C,40,4.5,N,P,B
+51,M,A,76,2.8,N,P,D
+28,M,C,80,3.1,N,R,B
+41,M,C,80,3.8,N,P,H
+29,M,C,67,2.9,N,E,P
+25,M,C,61,3.8,N,E,C
+60,M,C,76,4.7,N,S,H
+63,M,A,55,3.2,N,R,P
+51,M,C,85,4.0,N,N,H
+22,M,A,69,4.9,N,T,D
+54,M,A,26,3.7,N,P,D
+18,M,C,64,4.8,N,N,C
+29,M,F,60,3.6,N,S,D
+59,M,A,36,4.6,N,E,P
+25,M,F,21,4.3,N,T,D
+19,M,A,72,3.2,N,T,V
+56,M,C,62,3.8,N,P,B
+31,M,C,44,4.2,N,S,C
+45,M,C,52,3.4,N,T,V
+23,M,A,58,4.7,N,N,H
+18,M,C,77,3.9,N,T,D
+43,M,C,99,4.3,N,P,D
+56,M,C,96,2.7,N,S,H
+43,M,C,64,4.6,N,S,C
+64,M,C,44,2.9,N,E,B
+67,M,C,33,3.6,N,R,H
+63,M,F,71,3.9,N,N,C
+54,M,C,36,2.6,N,S,V
+69,M,A,62,3.6,N,E,C
+34,M,C,29,3.4,N,P,C
+56,M,C,33,3.5,N,E,H
+34,M,C,33,3.1,N,T,D
+58,M,C,41,4.3,N,S,H
+44,M,A,54,5.0,N,P,B
+25,M,A,58,4.9,N,P,D
+27,M,C,30,4.3,N,N,B
+26,M,A,53,4.4,N,S,H
+18,M,A,91,4.4,N,N,H
+64,M,C,44,3.5,N,E,P
+62,M,C,89,3.4,N,R,C
+59,M,C,57,2.5,N,N,B
+36,M,A,57,3.4,N,P,C
+69,M,A,74,2.6,N,N,D
+39,M,O,30,4.6,N,T,V
+28,M,C,20,3.7,N,E,P
+42,M,C,90,2.5,N,R,D
+31,M,C,61,4.5,N,E,D
+57,M,F,51,2.9,N,S,V
+53,M,A,97,2.9,N,R,D
+59,M,C,97,3.5,N,N,V
+32,M,C,40,4.2,N,P,P
+65,M,A,85,3.3,N,R,H
+56,M,C,76,3.9,N,P,H
+31,M,F,22,5.0,N,P,V
+59,M,C,63,3.3,N,S,B
+22,M,C,71,4.2,N,R,H
+47,M,F,35,4.9,N,T,B
+23,M,A,30,4.6,N,T,P
+69,M,C,74,4.8,N,P,C
+18,M,A,71,2.7,N,N,D
+50,M,C,84,4.3,N,P,C
+29,M,F,38,3.8,N,E,D
+65,M,A,81,4.9,N,E,D
+29,M,C,56,3.4,N,T,C
+49,M,C,48,3.6,N,E,H
+28,M,C,97,3.4,N,S,C
+51,M,A,74,4.7,N,T,H
+26,M,C,50,3.0,N,N,D
+38,M,C,71,3.4,N,R,P
+35,M,C,33,4.6,N,S,D
+34,M,A,56,3.1,N,E,P
+51,M,C,84,2.8,N,S,H
+47,M,C,36,3.5,N,P,V
+18,M,A,63,4.6,N,S,P
+64,M,F,36,4.3,N,S,H
+30,M,O,63,4.8,N,R,P
+59,M,F,32,2.9,N,E,C
+66,M,A,93,3.0,N,E,P
+40,M,C,29,2.9,N,S,H
+25,M,A,92,3.7,N,S,P
+59,M,C,33,4.7,N,S,V
+66,M,C,52,3.5,N,P,H
+54,M,A,42,2.7,N,P,D
+42,M,C,36,5.0,N,R,C
+48,M,F,67,4.1,N,N,V
+34,M,O,43,2.7,N,R,B
+19,M,C,68,4.8,N,R,H
+70,M,A,60,4.3,N,T,P
+43,M,C,53,4.5,N,T,B
+46,M,C,23,3.8,N,S,D
+66,M,A,57,3.7,N,P,P
+50,M,A,89,3.9,N,T,P
+55,M,F,99,3.3,N,S,C
+63,M,C,28,3.4,N,E,P
+32,M,C,53,3.8,N,N,H
+30,M,C,45,2.7,N,R,H
+35,M,C,38,2.9,N,T,C
+59,M,C,49,4.5,N,S,C
+59,M,C,32,2.6,N,P,P
+54,M,C,37,3.1,N,N,P
+63,M,C,80,4.7,N,P,P
+43,M,A,78,4.6,N,R,P
+33,M,A,53,2.7,N,N,B
+57,M,F,82,4.6,N,T,H
+25,M,C,33,4.8,N,S,P
+26,M,A,77,4.2,N,R,V
+50,M,C,56,4.9,N,E,H
+70,M,C,37,4.9,N,E,C
+68,M,A,54,4.5,N,P,H
+39,M,C,67,2.7,N,P,H
+46,M,F,90,3.1,N,P,C
+57,M,C,72,3.3,N,T,C
+47,M,F,59,2.6,N,R,D
+40,M,A,45,4.4,N,S,P
+52,M,C,30,3.9,N,S,C
+40,M,C,51,4.6,N,E,D
+67,M,C,90,4.9,N,E,D
+67,M,O,95,3.7,N,E,C
+37,M,C,81,3.7,N,S,V
+67,M,C,70,4.2,N,S,C
+64,M,C,32,3.5,N,N,B
+28,M,A,94,2.9,N,N,C
+54,M,A,29,3.4,N,N,V
+54,M,A,31,3.3,N,E,P
+24,M,C,20,4.5,N,S,V
+27,M,A,44,4.6,N,T,P
+53,M,O,77,2.9,N,E,H
+32,M,A,51,3.2,N,N,P
+24,M,F,49,2.6,N,R,B
+45,M,A,78,3.8,N,P,H
+49,M,C,98,2.8,N,P,D
+51,M,F,94,4.4,N,P,P
+69,M,F,91,4.7,N,E,P
+41,M,A,77,2.7,N,T,P
+59,M,A,97,2.6,N,N,D
+26,M,C,58,3.4,N,T,P
+23,M,A,97,3.9,N,T,C
+62,M,O,48,3.4,N,T,V
+69,M,A,23,3.4,N,E,H
+46,M,C,79,3.9,N,R,B
+35,M,A,42,4.0,N,E,P
+32,M,A,95,3.4,N,T,P
+46,M,F,29,3.7,N,N,V
+33,M,C,98,4.9,N,T,V
+32,M,C,96,5.0,N,E,H
+33,M,A,66,2.9,N,N,C
+67,M,F,80,3.0,N,S,D
+67,M,F,27,3.3,N,N,H
+42,M,A,25,4.7,N,E,D
+20,M,C,45,3.4,N,T,H
+39,M,C,89,4.6,N,T,D
+26,M,A,27,3.6,N,T,H
+51,M,A,90,2.6,N,R,D
+31,M,C,65,2.7,N,E,P
+68,M,F,72,3.1,N,E,H
+44,M,F,70,3.2,N,T,H
+18,M,F,82,3.4,N,P,P
+58,M,A,97,4.4,N,E,C
+26,M,C,25,3.2,N,T,P
+57,M,C,48,2.5,N,R,P
+37,M,F,99,3.8,N,N,V
+24,M,C,21,4.4,N,T,D
+57,M,F,94,3.7,N,E,B
+48,M,C,53,3.2,N,P,H
+39,M,A,70,4.9,N,S,D
+51,M,C,26,3.9,N,S,P
+57,M,A,82,4.5,N,N,C
+53,M,F,47,3.4,N,S,D
+70,M,C,32,4.1,N,N,B
+60,M,A,97,4.5,N,P,B
+31,M,C,68,4.7,N,P,H
+41,M,C,23,4.8,N,N,H
+62,M,A,33,4.4,N,S,V
+59,M,A,38,4.0,N,P,H
+46,M,C,68,4.1,N,P,H
+62,M,C,23,3.7,N,E,P
+42,M,C,29,3.0,N,E,D
+37,M,A,35,3.6,N,E,B
+50,M,F,73,4.8,N,S,C
+29,M,F,84,3.7,N,T,V
+25,M,A,23,4.6,N,N,P
+66,M,A,67,2.8,N,S,C
+21,M,C,51,4.0,N,S,C
+46,M,C,36,4.2,N,N,H
+57,M,C,55,3.6,N,E,V
+61,M,C,30,2.9,N,P,P
+53,M,C,70,4.1,N,E,B
+37,M,C,63,3.1,N,N,H
+39,M,A,87,4.3,N,E,V
+53,M,C,70,4.4,N,N,C
+35,M,C,51,3.1,N,N,D
+69,M,A,25,2.9,N,R,V
+66,M,O,32,3.2,N,N,P
+19,M,F,52,4.0,N,T,V
+47,M,A,33,2.7,N,S,P
+49,M,C,68,3.0,N,R,P
+31,M,A,20,4.4,N,E,P
+39,M,C,32,2.8,N,R,H
+58,M,A,82,3.1,N,P,H
+45,M,F,64,3.9,N,E,B
+68,M,F,24,2.7,N,S,V
+35,M,A,96,3.4,N,P,D
+65,M,C,94,3.8,N,R,C
+45,M,A,48,3.7,N,T,B
+19,M,A,60,4.5,N,T,C
+65,M,C,56,2.9,N,E,P
+28,M,A,33,3.4,N,T,B
+55,M,A,46,4.4,N,T,P
+66,M,C,37,4.2,N,S,P
+29,M,C,98,3.3,N,P,B
+56,M,C,50,3.7,N,E,P
+21,M,A,63,3.2,N,N,B
+32,M,C,70,2.6,N,P,D
+54,M,O,63,2.8,N,S,H
+61,M,C,86,2.9,N,S,H
+31,M,F,99,4.0,N,T,B
+27,M,F,40,2.9,N,R,B
+64,M,F,92,4.7,N,P,D
+60,M,C,21,3.1,N,T,H
+70,M,A,81,3.9,N,P,V
+36,M,C,82,3.4,N,R,D
+56,M,A,88,3.1,N,E,H
+69,M,O,100,4.8,N,P,P
+39,M,A,66,3.9,N,N,B
+38,M,A,25,3.5,N,N,P
+36,M,A,53,3.1,N,R,D
+46,M,C,28,4.7,N,E,D
+59,M,A,23,4.6,N,R,D
+64,M,A,34,3.3,N,R,B
+49,M,C,42,3.2,N,N,D
+32,M,C,24,3.1,N,N,P
+29,M,A,47,3.5,N,R,D
+24,M,O,78,4.3,N,S,B
+41,M,C,89,2.9,N,R,V
+41,M,A,59,2.7,N,P,C
+32,M,C,94,4.0,N,S,B
+69,M,C,49,4.6,N,R,D
+65,M,C,89,4.7,N,T,H
+54,M,A,91,4.7,N,S,C
+39,M,F,89,4.0,N,S,D
+37,M,O,57,3.6,N,R,C
+51,M,C,71,3.4,N,R,D
+26,M,C,97,3.0,N,N,B
+42,M,F,45,2.6,N,N,B
+21,M,C,91,4.2,N,P,D
+53,M,C,25,3.4,N,S,V
+36,M,C,63,4.0,N,P,B
+21,M,C,52,4.7,N,R,D
+33,M,F,43,3.9,N,N,C
+49,M,C,28,3.3,N,T,V
+31,M,C,78,2.9,N,E,P
+68,M,C,31,4.4,N,R,H
+49,M,C,23,3.6,N,N,B
+23,M,A,25,4.5,N,P,H
+30,M,C,86,3.7,N,P,V
+53,M,F,88,2.8,N,R,V
+65,M,A,35,4.5,N,R,V
+60,M,A,34,4.4,N,S,C
+46,M,C,75,3.3,N,S,P
+54,M,C,46,4.2,N,E,C
+59,M,A,31,2.7,N,R,V
+52,M,C,93,3.9,N,P,D
+41,M,A,85,2.6,N,R,B
+43,M,A,68,4.5,N,T,H
+63,M,C,40,2.7,N,P,P
+37,M,C,51,2.9,N,S,D
+44,M,A,85,3.4,N,P,B
+67,M,O,23,2.9,N,E,D
+27,M,C,28,3.8,N,R,D
+60,M,C,44,4.2,N,T,D
+58,M,A,57,3.5,N,P,V
+53,M,A,98,3.1,N,N,P
+43,M,A,68,3.5,N,T,B
+32,M,O,36,4.0,N,E,D
+54,M,O,71,3.7,N,E,D
+47,M,C,60,4.2,N,N,V
+57,M,O,87,4.8,N,P,P
+63,M,F,38,4.1,N,E,C
+70,M,F,45,4.5,N,T,D
+62,M,O,47,2.7,N,T,P
+40,M,C,57,2.8,N,P,P
+25,M,A,68,3.7,N,R,C
+19,M,C,52,3.6,N,E,B
+25,M,C,87,4.7,N,T,D
+21,M,A,34,3.8,N,S,B
+55,M,F,41,2.9,N,S,C
+34,M,A,94,4.6,N,N,D
+47,M,A,93,2.8,N,S,B
+27,M,C,51,4.6,N,T,C
+67,M,C,42,2.8,N,N,V
+40,M,F,95,3.0,N,R,H
+53,M,A,90,3.7,N,S,H
+24,M,C,98,4.1,N,T,P
+47,M,A,39,4.3,N,N,V
+53,M,F,66,3.8,N,N,V
+47,M,F,23,3.7,N,R,P
+38,M,C,73,4.8,N,S,P
+48,M,A,23,4.6,N,S,P
+47,M,C,43,4.8,N,S,H
+19,M,C,45,4.6,N,T,P
+38,M,F,21,4.0,N,S,B
+57,M,C,40,2.6,N,T,H
+70,M,C,58,2.6,N,T,V
+38,M,C,48,4.5,N,N,B
+35,M,C,94,4.2,N,R,P
+46,M,A,74,3.4,N,P,H
+32,M,A,51,3.7,N,P,P
+38,M,C,83,3.6,N,N,D
+41,M,A,68,4.0,N,N,V
+19,M,A,84,4.6,N,S,B
+18,M,C,58,3.0,N,R,H
+45,M,C,92,3.3,N,E,P
+23,M,C,69,3.8,N,E,D
+60,M,C,48,2.7,N,R,P
+52,M,F,60,4.5,N,E,B
+42,M,F,20,4.8,N,N,P
+29,M,C,55,4.2,N,E,C
+31,M,O,88,3.5,N,E,C
+30,M,C,48,4.9,N,S,V
+23,M,A,74,4.1,N,N,H
+31,M,O,42,2.9,N,N,B
+40,M,C,32,4.0,N,N,V
+39,M,C,98,4.6,N,P,H
+28,M,C,89,2.8,N,P,P
+23,M,A,97,5.0,N,T,V
+42,M,A,49,2.9,N,P,H
+68,M,C,50,3.3,N,R,C
+24,M,A,91,3.4,N,T,D
+24,M,A,93,3.0,N,E,P
+21,M,A,98,4.7,N,S,V
+49,M,C,82,2.9,N,N,P
+41,M,O,37,4.1,N,P,H
+22,M,A,63,3.2,N,R,B
+42,M,C,99,2.7,N,P,V
+30,M,C,37,4.7,N,P,H
+38,M,F,34,3.2,N,R,P
+40,M,C,32,2.5,N,E,D
+55,M,F,23,4.3,N,N,P
+37,M,C,78,4.4,N,R,P
+41,M,O,54,4.7,N,N,C
+38,M,C,94,4.0,N,E,C
+42,M,A,75,4.6,N,E,C
+26,M,C,69,3.8,N,N,H
+41,M,A,35,3.2,N,N,C
+27,M,C,78,5.0,N,E,P
+61,M,C,29,3.5,N,S,B
+58,M,C,62,3.7,N,N,H
+25,M,C,58,4.8,N,N,P
+33,M,F,88,3.7,N,T,V
+57,M,A,80,3.5,N,R,V
+39,M,A,47,4.9,N,P,D
+60,M,A,51,4.7,N,N,D
+39,M,C,25,4.9,N,T,V
+42,M,C,36,4.3,N,N,C
+53,M,C,79,3.1,N,R,H
+20,M,C,41,3.4,N,T,D
+46,M,C,68,2.7,N,E,P
+46,M,F,51,2.6,N,P,B
+69,M,A,38,2.9,N,N,C
+28,M,A,46,2.7,N,T,P
+42,M,F,20,4.5,N,T,B
+30,M,A,25,3.1,N,P,P
+50,M,C,89,3.2,N,R,D
+59,M,C,77,3.3,N,N,B
+54,M,A,94,2.9,N,E,D
+50,M,A,100,4.1,N,S,D
+25,M,F,96,2.7,N,E,C
+41,M,C,36,4.0,N,P,V
+35,M,A,27,2.6,N,P,B
+67,M,A,67,3.5,N,P,D
+33,M,C,91,2.8,N,P,B
+19,M,A,62,4.5,N,P,H
+25,M,C,88,3.0,N,R,C
+32,M,C,66,4.4,N,P,C
+30,M,F,65,4.7,N,N,P
+18,M,A,25,4.3,N,S,H
+38,M,A,64,4.8,N,R,C
+22,M,C,72,4.8,N,P,H
+40,M,A,74,4.4,N,N,C
+54,M,A,50,3.7,N,R,C
+70,M,C,97,3.9,N,E,V
+52,M,F,36,3.8,N,E,V
+34,M,O,49,4.1,N,P,C
+65,M,F,64,4.0,N,P,H
+38,M,C,31,4.5,N,E,C
+35,M,F,66,4.0,N,E,H
+40,M,C,82,4.5,N,T,C
+23,M,C,88,2.7,N,S,D
+45,M,F,34,3.8,N,N,V
+40,M,F,84,3.8,N,S,D
+42,M,A,96,3.8,N,T,C
+57,M,F,71,4.3,N,N,D
+18,M,O,77,3.5,N,R,B
+18,M,C,66,3.8,N,N,C
+56,M,C,21,3.7,N,T,D
+35,M,C,37,4.8,N,T,P
+49,M,C,90,4.9,N,R,P
+49,M,O,96,4.3,N,P,P
+34,M,A,37,4.4,N,N,V
+63,M,C,66,3.4,N,R,P
+42,M,A,45,4.3,N,N,D
+41,M,F,89,4.6,N,P,C
+26,M,F,94,3.8,N,R,D
+48,M,F,96,3.9,N,E,B
+62,M,C,31,2.6,N,P,P
+24,M,A,79,4.2,N,P,P
+48,M,O,39,4.6,N,P,B
+31,M,C,22,5.0,N,S,C
+41,M,C,32,4.2,N,S,B
+24,M,C,71,4.3,N,P,C
+60,M,C,96,3.3,N,R,H
+38,M,A,82,4.9,N,E,P
+58,M,A,76,4.4,N,S,B
+53,M,A,22,3.1,N,T,P
+44,M,A,40,3.5,N,P,H
+51,M,A,92,3.9,N,T,P
+36,M,O,94,3.9,N,P,P
+20,M,C,44,4.3,N,P,D
+32,M,A,49,3.8,N,E,V
+66,M,C,26,2.7,N,T,B
+49,M,C,38,4.4,N,P,C
+27,M,C,72,3.5,N,E,V
+29,M,C,99,3.4,N,R,P
+29,M,O,38,4.0,N,S,P
+55,M,O,96,4.8,N,E,P
+57,M,C,27,4.5,N,N,P
+29,M,C,24,4.4,N,S,D
+31,M,C,82,4.1,N,T,D
+25,M,A,56,4.6,N,N,C
+61,M,A,25,3.8,N,P,H
+53,M,F,67,2.9,N,R,B
+22,M,F,21,2.8,N,S,C
+28,M,C,27,3.0,N,P,B
+18,M,F,97,4.2,N,T,C
+44,M,A,45,4.1,N,R,C
+32,M,C,63,4.1,N,E,V
+34,M,A,100,4.6,N,T,P
+67,M,C,38,2.5,N,P,V
+66,M,C,45,3.0,N,P,D
+28,M,A,91,3.8,N,N,P
+70,M,C,82,4.1,N,R,V
+37,M,F,48,3.3,N,S,P
+28,M,O,30,5.0,N,T,C
+43,M,C,34,3.8,N,N,D
+37,M,C,68,3.3,N,E,D
+54,M,A,95,5.0,N,E,D
+50,M,A,22,2.9,N,T,P
+46,M,A,88,2.5,N,N,V
+60,M,C,83,4.7,N,S,B
+40,M,A,87,2.9,N,T,H
+64,M,O,57,3.7,N,P,C
+18,M,O,88,4.4,N,T,C
+37,M,C,20,2.9,N,N,D
+36,M,A,39,3.6,N,P,V
+51,M,A,71,4.8,N,T,C
+26,M,C,73,4.7,N,R,D
+68,M,A,63,2.6,N,R,H
+27,M,A,78,3.4,N,S,H
+28,M,C,96,3.5,N,N,D
+49,M,A,81,3.4,N,T,B
+70,M,C,95,5.0,N,T,B
+30,M,A,68,4.6,N,S,P
+27,M,F,28,4.8,N,T,B
+19,M,C,30,3.7,N,R,H
+64,M,C,31,4.7,N,N,B
+42,M,A,95,4.4,N,E,B
+69,M,C,79,3.5,N,T,D
+28,M,F,39,3.8,N,S,D
+47,M,O,34,4.7,N,N,B
+69,M,C,28,3.1,N,P,C
+56,M,F,38,5.0,N,R,P
+28,M,F,55,3.7,N,R,D
+50,M,F,31,3.0,N,N,D
+39,M,O,84,4.5,N,P,V
+35,M,A,93,4.7,N,E,C
+59,M,O,28,3.5,N,R,D
+44,M,F,55,4.4,N,T,H
+66,M,C,63,2.6,N,S,B
+20,M,C,94,4.2,N,T,V
+45,M,C,36,2.6,N,E,V
+49,M,A,97,4.8,N,R,B
+60,M,A,63,2.9,N,P,P
+61,M,A,77,4.3,N,T,C
+36,M,A,53,2.6,N,P,V
+33,M,C,77,3.8,N,N,P
+49,M,F,79,4.2,N,S,C
+31,M,O,37,3.9,N,P,V
+19,M,A,94,3.1,N,R,C
+39,M,F,76,3.6,N,P,H
+66,M,F,68,4.0,N,E,P
+25,M,C,65,3.4,N,N,B
+63,M,C,24,2.6,N,S,C
+56,M,O,31,4.5,N,E,V
+20,M,C,89,4.9,N,S,D
+58,M,C,49,4.4,N,T,P
+34,M,F,92,3.5,N,E,V
+28,M,C,32,3.3,N,E,B
+22,M,O,67,3.1,N,S,D
+37,M,A,64,4.2,N,E,H
+54,M,F,84,4.9,N,N,P
+65,M,C,34,3.9,N,S,C
+57,M,F,26,4.2,N,R,H
+38,M,C,50,4.9,N,P,P
+70,M,F,46,2.8,N,P,B
+56,M,A,71,4.1,N,S,D
+56,M,C,78,4.8,N,N,V
+22,M,C,35,4.1,N,N,H
+57,M,A,58,3.0,N,R,D
+53,M,C,67,4.2,N,T,C
+53,M,C,93,3.8,N,S,C
+19,M,A,81,3.3,N,T,B
+49,M,A,80,4.7,N,T,V
+44,M,A,64,4.3,N,T,C
+27,M,C,41,2.7,N,S,C
+60,M,C,79,4.2,N,E,H
+62,M,A,60,4.2,N,R,P
+52,M,F,91,2.5,N,N,V
+30,M,F,66,3.6,N,E,C
+66,M,C,85,3.4,N,S,B
+29,M,A,38,3.3,N,S,D
+24,M,C,23,4.6,N,S,P
+51,M,F,71,3.9,N,P,V
+67,M,C,25,3.7,N,N,D
+50,M,F,39,3.1,N,E,P
+37,M,C,20,4.9,N,E,D
+69,M,A,73,4.7,N,S,D
+60,M,A,63,2.9,N,N,C
+21,M,A,94,4.1,N,E,H
+44,M,C,94,4.0,N,N,H
+26,M,A,71,2.7,N,P,P
+40,M,A,77,4.0,N,T,D
+41,M,A,66,2.5,N,N,P
+62,M,F,23,4.5,N,R,P
+39,M,C,60,3.9,N,E,D
+53,M,A,72,4.9,N,T,B
+24,M,C,35,3.3,N,T,P
+41,M,A,31,3.8,N,E,P
+19,M,C,33,2.9,N,S,V
+36,M,A,95,4.0,N,T,D
+21,M,C,68,4.1,N,P,D
+25,M,O,87,3.1,N,P,B
+65,M,C,64,4.6,N,E,D
+42,M,C,74,4.6,N,N,B
+40,M,C,62,2.6,N,T,H
+58,M,C,97,5.0,N,T,P
+40,M,F,47,2.9,N,T,D
+62,M,C,83,3.5,N,T,P
+38,M,C,82,3.7,N,T,V
+37,M,A,26,2.9,N,P,V
+65,M,O,81,4.3,N,R,B
+55,M,C,44,3.2,N,P,H
+43,M,A,88,4.2,N,N,C
+43,M,F,76,4.2,N,S,P
+45,M,A,89,3.8,N,R,H
+64,M,C,22,4.4,N,S,D
+28,M,C,33,3.1,N,T,C
+69,M,C,97,5.0,N,S,D
+54,M,A,57,4.7,N,S,P
+52,M,C,38,3.0,N,E,C
+23,M,F,55,4.2,N,N,D
+26,M,A,37,3.0,N,P,H
+48,M,F,43,3.7,N,R,P
+49,M,C,96,2.7,N,R,H
+53,M,O,51,4.3,N,T,B
+69,M,C,95,2.7,N,T,B
+26,M,C,26,3.7,N,N,C
+21,M,O,34,4.3,N,S,B
+59,M,F,83,4.0,N,N,C
+21,M,A,24,3.3,N,S,V
+22,M,C,69,4.0,N,N,H
+26,M,C,40,2.7,N,N,C
+41,M,O,87,4.2,N,R,P
+37,M,F,46,4.6,N,S,D
+30,M,A,82,4.8,N,P,C
+49,M,A,81,2.8,N,R,C
+49,M,A,57,4.5,N,N,B
+58,M,F,49,3.0,N,T,B
+70,M,O,42,4.6,N,R,D
+27,M,O,26,3.3,N,S,H
+65,M,C,38,4.4,N,N,D
+57,M,F,57,4.4,N,S,C
+20,M,O,100,4.3,N,E,H
+34,M,C,73,3.4,N,E,B
+59,M,O,66,2.8,N,P,V
+54,M,C,73,3.4,N,S,H
+36,M,A,45,5.0,N,P,C
+21,M,F,27,4.5,N,R,H
+52,M,C,24,2.7,N,P,C
+43,M,F,59,3.4,N,P,C
+32,M,C,20,3.4,N,E,V
+55,M,A,44,2.8,N,S,B
+31,M,C,90,4.7,N,S,B
+45,M,A,36,4.7,N,R,C
+53,M,C,95,4.7,N,R,D
+24,M,A,30,3.4,N,T,B
+47,M,A,65,3.7,N,E,D
+63,M,A,96,4.1,N,P,H
+38,M,C,65,2.9,N,T,C
+59,M,C,47,3.2,N,P,V
+54,M,A,25,3.0,N,R,P
+26,M,O,56,4.1,N,E,V
+68,M,C,76,4.5,N,S,V
+41,M,C,60,3.4,N,P,V
+68,M,C,67,4.1,N,E,B
+21,M,C,95,4.6,N,P,H
+32,M,A,72,4.6,N,E,V
+20,M,A,98,3.4,N,E,H
+59,M,C,83,3.3,N,T,P
+53,M,A,37,3.6,N,T,H
+66,M,C,85,4.6,N,R,B
+47,M,C,36,4.3,N,T,H
+58,M,C,36,4.0,N,P,C
+28,M,A,86,4.8,N,N,C
+68,M,C,99,4.3,N,S,B
+60,M,C,21,3.3,N,S,H
+47,M,O,84,2.8,N,E,H
+18,M,F,63,4.4,N,R,B
+32,M,C,84,3.7,N,E,H
+27,M,C,72,3.6,N,E,C
+65,M,C,21,3.7,N,T,V
+68,M,F,92,5.0,N,S,P
+55,M,C,72,2.7,N,N,C
+30,M,F,83,4.3,N,P,H
+24,M,C,73,4.1,N,S,C
+57,M,C,98,2.6,N,N,H
+23,M,C,76,3.2,N,P,B
+69,M,C,43,3.5,N,N,V
+60,M,A,60,3.7,N,N,H
+25,M,A,40,3.8,N,T,P
+18,M,C,93,4.8,N,T,B
+37,M,C,98,4.2,N,S,C
+61,M,C,91,2.9,N,N,C
+41,M,A,92,2.9,N,R,D
+69,M,A,87,4.8,N,N,C
+32,M,C,96,2.9,N,S,D
+60,M,C,97,4.8,N,T,H
+43,M,C,55,4.6,N,T,B
+61,M,C,58,4.4,N,P,C
+57,M,F,21,3.0,N,N,P
+56,M,A,82,4.4,N,E,P
+66,M,O,34,3.9,N,E,V
+52,M,C,78,4.0,N,R,H
+63,M,A,47,2.5,N,E,B
+50,M,A,96,4.1,N,N,B
+21,M,C,23,4.8,N,T,V
+42,M,F,27,2.6,N,P,D
+40,M,A,37,3.1,N,R,C
+67,M,A,79,3.2,N,P,C
+35,M,A,40,4.2,N,S,B
+18,M,O,39,2.6,N,N,H
+52,M,C,73,3.1,N,N,H
+59,M,A,84,2.9,N,P,H
+49,M,C,94,4.6,N,R,V
+46,M,C,47,4.1,N,S,P
+69,M,F,77,2.5,N,P,D
+56,M,C,94,4.0,N,P,H
+27,M,A,75,3.5,N,E,P
+57,M,C,82,4.4,N,R,V
+58,M,F,36,2.9,N,P,C
+23,M,F,90,3.1,N,T,D
+19,M,C,48,4.4,N,R,B
+40,M,O,42,4.4,N,S,C
+54,M,A,33,2.7,N,P,P
+50,M,C,63,4.9,N,R,C
+69,M,A,53,3.5,N,T,H
+42,M,A,37,4.8,N,R,P
+37,M,C,92,4.2,N,T,H
+46,M,C,73,4.6,N,S,D
+64,M,C,38,2.9,N,S,V
+20,M,F,51,4.0,N,P,V
+40,M,O,90,4.9,N,S,C
+64,M,O,56,3.1,N,N,H
+29,M,A,33,4.4,N,S,P
+20,M,A,53,2.5,N,T,D
+43,M,A,24,3.4,N,E,B
+60,M,O,59,3.7,N,E,C
+39,M,C,72,4.2,N,S,P
+47,M,C,28,3.4,N,E,P
+19,M,C,36,3.6,N,E,B
+52,M,A,47,4.7,N,T,D
+34,M,A,62,4.7,N,N,B
+25,M,C,98,3.6,N,R,D
+43,M,F,28,4.6,N,R,H
+55,M,C,86,2.6,N,N,D
+66,M,A,46,3.1,N,S,H
+41,M,A,42,3.2,N,R,H
+47,M,O,80,3.9,N,E,B
+51,M,A,39,4.9,N,E,P
+44,M,O,49,4.1,N,T,P
+18,M,A,32,4.2,N,N,C
+33,M,F,73,4.1,N,N,H
+24,M,A,42,3.9,N,R,D
+33,M,A,58,2.7,N,N,V
+61,M,A,22,3.7,N,E,P
+27,M,A,56,2.7,N,N,P
+46,M,C,70,2.5,N,N,V
+38,M,F,50,3.9,N,R,D
+63,M,F,21,3.0,N,E,C
+47,M,O,97,3.2,N,T,H
+42,M,A,63,3.8,N,S,C
+41,M,O,60,2.7,N,S,D
+53,M,F,52,3.0,N,P,D
+29,M,F,32,4.1,N,N,D
+61,M,A,48,3.2,N,T,C
+69,M,A,25,4.5,N,P,V
+51,M,A,68,4.3,N,P,D
+24,M,C,74,3.5,N,S,C
+24,M,C,88,3.1,N,S,B
+70,M,C,23,3.9,N,S,P
+49,M,C,32,2.7,N,E,P
+48,M,A,71,4.0,N,R,D
+58,M,F,62,2.7,N,N,D
+32,M,C,20,2.7,N,R,D
+57,M,C,62,4.7,N,S,H
+69,M,A,81,4.5,N,S,V
+42,M,A,90,3.0,N,T,B
+30,M,C,43,3.6,N,P,V
+35,M,A,38,3.3,N,S,P
+19,M,A,25,4.3,N,P,H
+52,M,C,98,4.3,N,E,P
+42,M,C,75,4.8,N,R,B
+36,M,F,27,4.0,N,P,P
+45,M,A,27,3.5,N,S,H
+54,M,C,42,3.9,N,N,B
+54,M,C,90,4.4,N,P,B
+27,M,A,63,4.6,N,T,C
+53,M,C,96,4.0,N,E,P
+20,M,C,40,4.2,N,R,D
+52,M,C,39,4.5,N,N,B
+54,M,A,48,3.9,N,R,H
+65,M,C,20,3.7,N,E,V
+43,M,C,29,3.6,N,P,B
+57,M,C,81,4.7,N,E,C
+19,M,C,98,3.6,N,T,V
+69,M,C,93,2.5,N,N,H
+26,M,C,30,2.9,N,P,B
+57,M,A,37,4.4,N,R,D
+20,M,O,28,4.6,N,E,C
+55,M,A,29,3.7,N,E,P
+44,M,A,49,3.2,N,R,V
+52,M,C,53,4.9,N,T,P
+57,M,A,66,5.0,N,R,V
+40,M,O,61,3.3,N,E,H
+23,M,C,23,4.4,N,P,V
+36,M,C,36,4.7,N,P,B
+59,M,C,81,3.6,N,R,H
+29,M,C,56,3.2,N,R,B
+63,M,C,78,3.0,N,N,C
+60,M,A,25,4.4,N,P,V
+64,M,A,86,3.3,N,E,D
+63,M,A,99,3.4,N,E,C
+21,M,A,83,3.9,N,E,B
+61,M,C,33,2.9,N,P,H
+65,M,O,44,2.9,N,R,V
+69,M,C,58,2.7,N,T,H
+47,M,C,54,3.4,N,P,D
+41,M,C,93,3.7,N,T,V
+68,M,F,98,4.7,N,S,B
+41,M,F,36,3.1,N,E,P
+42,M,O,68,4.2,N,T,C
+66,M,A,95,3.0,N,P,D
+66,M,C,93,3.1,N,E,H
+33,M,O,99,4.2,N,T,H
+55,M,A,22,3.8,N,N,V
+58,M,A,88,2.9,N,E,B
+18,M,O,65,4.2,N,E,B
+49,M,C,62,3.1,N,T,D
+61,M,F,55,3.6,N,E,H
+31,M,C,97,4.8,N,S,B
+70,M,A,77,4.1,N,E,V
+68,M,C,40,3.9,N,R,C
+27,M,C,23,3.0,N,S,D
+48,M,F,46,3.0,N,E,B
+63,M,A,75,4.9,N,T,C
+49,M,F,76,4.8,N,N,H
+19,M,C,59,3.3,N,S,C
+30,M,C,51,2.7,N,S,C
+50,M,O,46,4.2,N,E,C
+66,M,C,26,3.6,N,N,B
+25,M,C,51,3.8,N,N,C
+61,M,A,44,3.8,N,R,V
+29,M,C,82,4.2,N,R,H
+53,M,C,44,2.7,N,E,H
+24,M,A,27,5.0,N,N,H
+51,M,A,90,4.7,N,N,C
+26,M,F,58,3.2,N,P,P
+59,M,C,80,2.9,N,T,P
+41,M,O,40,4.2,N,P,V
+20,M,C,23,3.7,N,P,P
+22,M,C,34,4.2,N,P,C
+18,M,C,35,2.6,N,R,D
+30,M,C,75,4.0,N,P,V
+25,M,A,60,2.7,N,N,B
+39,M,A,87,4.0,N,P,B
+49,M,A,41,2.9,N,N,H
+25,M,C,83,3.3,N,S,B
+23,M,A,81,4.0,N,P,B
+33,M,C,56,3.9,N,N,D
+60,M,F,58,3.3,N,T,D
+51,M,C,84,3.9,N,N,P
+23,M,A,21,3.9,N,P,B
+20,M,C,35,4.2,N,S,C
+51,M,F,43,4.6,N,P,P
+23,F,C,20,3.3,N,T,C
+67,F,C,36,4.8,N,E,V
+23,F,O,70,4.1,N,N,P
+26,F,A,83,3.4,N,S,C
+52,F,C,76,3.6,N,E,B
+52,F,C,81,2.7,N,E,C
+52,F,A,47,3.2,N,N,P
+35,F,F,35,4.4,N,T,C
+24,F,C,85,4.9,N,E,V
+43,F,F,96,4.8,N,E,B
+25,F,C,98,2.8,N,T,P
+46,F,F,52,2.9,N,R,B
+22,F,A,84,3.2,N,P,P
+70,F,C,71,3.5,N,P,V
+49,F,F,95,4.1,N,P,V
+48,F,F,47,4.1,N,R,H
+59,F,O,75,4.8,N,N,P
+39,F,A,28,2.8,N,R,C
+30,F,A,44,4.7,N,E,B
+37,F,F,64,4.8,N,T,P
+56,F,F,28,2.9,N,S,H
+67,F,C,21,2.6,N,T,H
+40,F,A,41,3.3,N,E,H
+24,F,C,38,3.4,N,R,H
+43,F,A,77,3.6,N,R,H
+45,F,C,43,3.8,N,N,P
+33,F,A,91,3.4,N,T,C
+53,F,C,68,3.8,N,E,D
+44,F,C,37,3.3,N,N,V
+23,F,F,23,4.8,N,S,D
+59,F,F,65,3.9,N,T,V
+68,F,A,30,4.2,N,N,H
+46,F,C,45,4.7,N,R,C
+56,F,F,25,2.7,N,E,C
+40,F,C,72,3.8,N,T,H
+61,F,C,75,3.6,N,T,D
+53,F,A,63,2.9,N,T,C
+29,F,C,35,3.9,N,S,P
+44,F,A,32,4.7,N,R,B
+43,F,C,25,3.3,N,T,H
+40,F,F,90,4.2,N,R,D
+55,F,F,70,2.6,N,S,H
+66,F,A,27,4.9,N,E,C
+50,F,A,92,3.6,N,S,P
+57,F,O,20,4.7,N,R,D
+42,F,O,52,3.2,N,S,B
+55,F,C,57,3.6,N,P,V
+25,F,F,96,3.6,N,T,D
+22,F,C,68,3.2,N,S,H
+49,F,C,30,2.8,N,P,B
+70,F,F,37,4.0,N,N,D
+56,F,A,42,4.4,N,R,P
+52,F,C,54,3.4,N,N,D
+65,F,O,81,5.0,N,P,C
+24,F,F,40,3.1,N,E,D
+32,F,A,88,4.2,N,S,H
+57,F,C,94,3.3,N,P,D
+35,F,C,54,2.9,N,S,C
+69,F,O,51,4.7,N,S,B
+30,F,A,22,4.0,N,S,V
+37,F,O,95,4.6,N,S,D
+19,F,O,57,3.8,N,T,D
+53,F,C,45,3.6,N,P,C
+25,F,F,92,4.1,N,E,P
+47,F,F,40,2.7,N,P,D
+18,F,A,62,4.3,N,R,C
+22,F,C,90,4.9,N,N,V
+69,F,C,82,4.2,N,R,B
+55,F,A,52,2.8,N,P,B
+19,F,F,70,4.9,N,R,P
+23,F,A,83,2.8,N,T,P
+54,F,F,49,2.9,N,P,P
+52,F,F,91,2.5,N,N,D
+64,F,A,99,2.7,N,R,D
+33,F,A,92,3.3,N,R,P
+40,F,C,87,3.7,N,T,C
+26,F,C,28,4.0,N,E,D
+31,F,A,71,4.1,N,R,C
+23,F,A,32,4.1,N,P,B
+52,F,A,33,2.5,N,T,B
+21,F,C,75,4.2,N,P,D
+31,F,A,83,4.7,N,E,P
+63,F,C,93,2.7,N,T,H
+46,F,C,29,3.0,N,E,P
+44,F,C,25,4.8,N,P,C
+57,F,A,76,4.4,N,R,H
+50,F,F,81,4.3,N,T,V
+33,F,C,80,2.5,N,P,C
+19,F,A,70,4.9,N,R,B
+68,F,C,81,4.9,N,T,V
+27,F,F,86,3.9,N,R,D
+61,F,A,94,4.1,N,T,V
+38,F,C,66,3.3,N,P,C
+28,F,F,98,4.1,N,S,P
+39,F,C,25,3.7,N,S,P
+18,F,C,62,3.1,N,R,C
+24,F,O,98,3.0,N,R,V
+64,F,O,53,3.4,N,S,B
+51,F,F,66,2.7,N,T,P
+27,F,C,52,3.1,N,R,V
+48,F,C,64,4.0,N,R,V
+69,F,A,59,3.6,N,N,P
+59,F,A,61,3.6,N,R,V
+59,F,A,97,3.3,N,P,C
+42,F,A,23,4.1,N,R,P
+39,F,A,98,4.3,N,N,V
+32,F,C,98,3.2,N,S,B
+68,F,F,59,3.9,N,R,H
+41,F,C,82,5.0,N,N,C
+31,F,F,82,3.4,N,N,C
+58,F,C,41,3.8,N,P,D
+28,F,A,52,2.9,N,T,V
+63,F,C,41,2.6,N,N,D
+64,F,A,70,4.3,N,T,C
+66,F,C,91,2.8,N,S,C
+31,F,C,95,4.5,N,R,H
+55,F,C,25,3.8,N,T,P
+32,F,C,89,3.0,N,S,H
+50,F,F,44,3.3,N,E,B
+58,F,O,52,3.1,N,T,B
+18,F,A,94,3.5,N,P,B
+39,F,C,98,4.6,N,E,B
+56,F,F,40,4.1,N,S,C
+37,F,C,25,3.6,N,R,D
+46,F,A,62,2.9,N,R,B
+52,F,C,24,4.8,N,S,C
+70,F,A,57,3.2,N,S,C
+61,F,A,66,4.3,N,E,C
+33,F,F,70,4.1,N,N,P
+65,F,F,39,4.6,N,S,P
+41,F,A,34,3.8,N,R,P
+19,F,C,38,4.5,N,N,C
+33,F,C,70,3.1,N,E,P
+53,F,C,80,2.9,N,N,B
+54,F,A,51,3.8,N,N,D
+36,F,F,79,4.1,N,N,V
+56,F,F,92,3.1,N,R,C
+28,F,C,85,5.0,N,E,C
+34,F,C,63,4.5,N,R,D
+43,F,A,60,2.8,N,E,V
+54,F,C,44,3.2,N,E,C
+37,F,F,57,3.1,N,S,D
+33,F,O,24,3.3,N,S,H
+33,F,A,35,3.4,N,P,P
+55,F,O,73,3.8,N,P,H
+63,F,A,42,3.5,N,E,V
+52,F,C,20,4.8,N,P,P
+23,F,C,89,3.9,N,R,B
+70,F,C,76,3.4,N,R,H
+64,F,C,56,2.6,N,E,P
+22,F,O,100,3.1,N,P,C
+46,F,C,44,3.3,N,R,B
+65,F,C,76,2.8,N,S,B
+18,F,A,97,4.3,N,S,H
+45,F,C,39,2.7,N,S,C
+56,F,C,100,4.4,N,T,D
+49,F,C,62,3.9,N,R,P
+66,F,C,98,3.0,N,S,D
+27,F,C,31,4.0,N,S,D
+69,F,O,89,3.7,N,P,C
+66,F,C,91,3.8,N,P,C
+45,F,C,50,3.3,N,T,D
+31,F,C,32,3.6,N,S,B
+33,F,C,67,3.9,N,R,V
+43,F,C,28,3.5,N,R,V
+25,F,A,65,3.4,N,S,V
+46,F,C,73,4.7,N,N,D
+67,F,C,27,3.0,N,R,H
+26,F,A,89,3.9,N,R,H
+35,F,F,72,4.5,N,S,V
+61,F,C,37,4.1,N,S,P
+26,F,C,63,4.5,N,S,D
+39,F,A,90,4.0,N,R,D
+69,F,A,62,4.3,N,T,B
+32,F,A,43,3.6,N,E,V
+20,F,C,96,3.1,N,N,B
+25,F,A,83,2.6,N,S,P
+56,F,A,67,3.4,N,N,H
+63,F,C,90,2.9,N,P,V
+34,F,C,53,5.0,N,E,C
+29,F,A,37,4.6,N,S,P
+43,F,C,56,3.3,N,R,H
+39,F,O,43,2.9,N,T,C
+33,F,C,84,4.9,N,R,V
+51,F,C,50,5.0,N,T,H
+65,F,F,88,4.5,N,E,P
+51,F,O,50,3.7,N,R,B
+70,F,A,80,2.8,N,P,B
+40,F,C,47,3.5,N,P,H
+19,F,C,33,3.0,N,T,H
+28,F,O,100,4.3,N,S,D
+51,F,C,26,3.6,N,P,V
+32,F,A,79,4.4,N,S,V
+26,F,A,77,4.1,N,E,D
+50,F,C,36,2.8,N,N,P
+68,F,A,21,2.8,N,R,P
+33,F,F,72,4.9,N,P,B
+56,F,O,25,4.1,N,E,P
+57,F,C,79,3.0,N,P,D
+58,F,C,73,3.0,N,P,D
+40,F,A,71,3.0,N,P,V
+37,F,A,48,3.2,N,N,P
+36,F,F,28,2.7,N,P,V
+29,F,F,95,3.8,N,T,P
+65,F,O,48,3.5,N,T,C
+44,F,C,93,3.8,N,N,D
+34,F,C,87,3.8,N,T,B
+31,F,C,32,3.4,N,E,B
+28,F,C,38,2.9,N,N,B
+66,F,O,54,3.4,N,R,C
+68,F,O,75,4.7,N,P,B
+37,F,C,56,3.9,N,T,V
+58,F,C,43,3.6,N,P,V
+28,F,C,97,3.7,N,R,H
+54,F,C,75,3.1,N,R,H
+21,F,F,55,4.9,N,N,H
+45,F,A,49,2.6,N,N,P
+57,F,C,58,4.2,N,S,B
+47,F,A,34,4.8,N,R,D
+46,F,C,43,2.7,N,T,V
+63,F,A,48,2.6,N,N,H
+44,F,C,40,2.6,N,R,B
+36,F,C,29,3.1,N,S,D
+24,F,C,81,2.6,N,R,D
+65,F,C,84,3.4,N,T,B
+32,F,C,46,3.6,N,S,V
+63,F,C,86,4.3,N,N,B
+62,F,C,57,4.9,N,R,V
+19,F,C,61,4.8,N,P,P
+38,F,A,90,4.2,N,R,B
+59,F,C,51,2.6,N,P,C
+22,F,C,48,3.2,N,S,P
+55,F,F,50,3.4,N,T,C
+29,F,A,82,3.5,N,N,C
+42,F,A,33,4.2,N,R,P
+23,F,F,28,2.8,N,E,H
+70,F,C,42,5.0,N,T,D
+64,F,A,43,3.3,N,P,V
+39,F,C,55,3.7,N,R,C
+47,F,C,73,2.5,N,R,P
+22,F,C,39,3.2,N,S,C
+69,F,A,20,3.1,N,R,D
+35,F,A,32,3.5,N,S,V
+56,F,C,86,4.6,N,S,B
+30,F,C,91,3.3,N,R,V
+43,F,O,59,2.5,N,R,H
+23,F,F,33,4.6,N,E,C
+50,F,F,64,4.2,N,T,B
+41,F,C,67,4.0,N,S,H
+41,F,C,43,2.6,N,R,C
+27,F,F,32,4.6,N,S,P
+38,F,A,39,3.5,N,T,C
+41,F,F,41,4.0,N,T,V
+58,F,A,53,4.8,N,S,D
+58,F,O,27,3.9,N,S,V
+19,F,A,82,3.7,N,N,P
+43,F,C,87,3.1,N,P,D
+27,F,A,78,3.0,N,N,C
+32,F,A,32,2.9,N,P,C
+28,F,C,38,2.9,N,N,V
+48,F,F,37,4.0,N,S,H
+43,F,O,83,3.5,N,E,H
+45,F,C,72,3.8,N,E,D
+26,F,C,30,4.5,N,E,D
+62,F,C,66,2.7,N,E,C
+58,F,C,45,2.9,N,P,V
+19,F,A,73,4.9,N,R,H
+64,F,F,67,3.8,N,S,D
+33,F,A,72,4.9,N,R,D
+20,F,A,24,4.6,N,S,H
+45,F,A,68,3.5,N,E,P
+28,F,C,70,4.2,N,T,H
+47,F,C,64,3.7,N,R,D
+54,F,C,91,2.8,N,P,C
+64,F,A,82,4.8,N,T,H
+45,F,C,24,2.7,N,E,V
+40,F,A,80,3.6,N,P,C
+31,F,C,53,4.5,N,N,V
+38,F,C,50,4.0,N,R,V
+36,F,A,31,4.5,N,T,C
+65,F,A,88,3.9,N,E,P
+27,F,A,52,3.8,N,S,V
+38,F,A,22,4.7,N,N,B
+58,F,F,27,4.6,N,S,V
+31,F,C,34,3.6,N,E,P
+28,F,A,39,4.3,N,T,C
+28,F,A,53,3.0,N,S,H
+32,F,C,46,4.3,N,E,V
+61,F,A,85,4.8,N,N,H
+38,F,C,86,3.7,N,R,P
+54,F,C,63,2.6,N,R,B
+29,F,C,44,3.4,N,S,C
+50,F,F,95,3.9,N,R,V
+32,F,A,49,4.8,N,R,C
+38,F,C,77,2.8,N,R,B
+52,F,A,63,4.4,N,S,V
+61,F,C,83,3.1,N,S,D
+25,F,A,93,3.8,N,P,P
+22,F,C,91,4.1,N,T,D
+47,F,A,99,4.6,N,R,H
+50,F,A,24,4.9,N,N,D
+45,F,C,82,4.8,N,N,C
+33,F,C,28,3.9,N,E,C
+42,F,F,67,2.6,N,R,C
+52,F,C,88,3.7,N,S,V
+69,F,A,70,4.7,N,S,H
+55,F,C,100,4.5,N,S,P
+38,F,A,28,4.7,N,R,P
+57,F,O,48,3.6,N,S,C
+33,F,C,43,2.8,N,R,D
+57,F,C,40,4.0,N,E,C
+52,F,F,97,3.6,N,R,C
+44,F,O,25,3.8,N,T,V
+48,F,A,45,4.4,N,S,P
+52,F,F,49,2.8,N,P,D
+34,F,F,36,3.4,N,R,V
+26,F,C,48,4.9,N,E,H
+36,F,A,62,4.3,N,N,H
+24,F,A,74,3.4,N,R,C
+30,F,A,100,3.9,N,N,P
+31,F,O,39,4.2,N,R,V
+25,F,F,65,2.7,N,P,B
+57,F,F,99,4.1,N,P,C
+61,F,A,68,4.5,N,T,H
+30,F,O,97,2.8,N,E,H
+38,F,C,47,3.4,N,S,V
+53,F,C,56,3.9,N,R,B
+31,F,C,91,2.6,N,N,P
+70,F,A,93,4.4,N,T,B
+21,F,C,36,4.9,N,S,V
+33,F,C,45,3.6,N,P,C
+60,F,C,44,2.8,N,T,C
+45,F,A,32,4.3,N,T,D
+46,F,A,36,3.0,N,E,H
+62,F,A,85,3.3,N,T,C
+63,F,C,36,2.5,N,P,H
+69,F,C,55,5.0,N,T,D
+46,F,A,20,4.3,N,T,C
+69,F,C,91,4.2,N,R,V
+66,F,C,71,3.9,N,S,P
+41,F,C,64,3.9,N,P,V
+32,F,O,21,4.2,N,R,H
+69,F,C,100,3.5,N,P,B
+29,F,C,96,2.5,N,S,D
+70,F,A,91,2.9,N,E,V
+41,F,C,40,2.7,N,N,V
+31,F,C,53,4.7,N,E,D
+31,F,A,48,3.8,N,S,H
+57,F,F,70,3.7,N,E,P
+29,F,O,29,4.7,N,E,C
+70,F,A,29,3.6,N,N,B
+51,F,C,53,2.8,N,E,C
+45,F,C,79,3.7,N,P,V
+18,F,C,65,3.5,N,E,V
+37,F,C,99,3.7,N,P,V
+23,F,A,60,3.0,N,N,V
+39,F,F,86,4.9,N,R,P
+62,F,A,73,4.6,N,R,V
+70,F,A,45,3.3,N,R,C
+20,F,A,70,3.0,N,N,C
+42,F,A,65,3.5,N,S,P
+41,F,C,55,4.2,N,P,H
+24,F,C,65,4.5,N,E,P
+37,F,A,21,2.8,N,E,B
+30,F,C,26,4.9,N,P,B
+58,F,A,71,3.3,N,N,H
+43,F,F,41,3.0,N,R,D
+19,F,O,44,3.9,N,T,P
+23,F,C,81,2.8,N,P,V
+65,F,A,77,4.5,N,T,H
+58,F,F,26,4.0,N,R,P
+50,F,A,31,2.9,N,E,P
+67,F,C,82,4.0,N,R,C
+40,F,F,60,3.4,N,P,P
+55,F,C,70,2.5,N,R,C
+52,F,C,26,2.8,N,T,C
+62,F,C,100,3.0,N,R,P
+64,F,C,82,3.1,N,R,D
+43,F,F,24,2.6,N,T,C
+61,F,C,74,4.9,N,T,C
+26,F,A,58,3.5,N,N,C
+22,F,C,56,2.6,N,P,P
+51,F,F,37,3.5,N,T,C
+69,F,A,64,4.5,N,R,H
+50,F,C,58,4.3,N,N,V
+51,F,A,44,4.8,N,N,H
+56,F,A,39,4.2,N,R,D
+59,F,C,48,3.2,N,N,P
+18,F,A,32,4.1,N,E,H
+48,F,A,79,4.0,N,E,P
+53,F,O,27,2.9,N,N,P
+45,F,A,98,2.6,N,P,C
+21,F,F,67,2.7,N,R,B
+42,F,C,37,4.6,N,T,P
+60,F,F,49,3.2,N,P,H
+21,F,F,74,4.1,N,T,P
+69,F,A,93,3.9,N,S,V
+40,F,A,60,3.0,N,N,B
+31,F,O,76,3.6,N,S,V
+44,F,A,64,4.6,N,E,D
+48,F,F,38,4.5,N,P,B
+32,F,F,91,3.2,N,N,B
+42,F,F,70,4.9,N,T,V
+27,F,F,22,5.0,N,S,D
+69,F,A,59,3.8,N,S,H
+67,F,A,22,3.4,N,N,B
+41,F,A,74,3.8,N,P,B
+46,F,C,71,3.2,N,E,C
+47,F,O,80,4.7,N,P,V
+33,F,C,59,4.5,N,E,P
+51,F,A,96,3.3,N,S,P
+26,F,A,43,3.9,N,P,C
+22,F,A,76,3.6,N,E,B
+49,F,O,59,2.8,N,P,V
+58,F,C,48,4.3,N,R,V
+70,F,A,22,3.5,N,R,H
+32,F,F,40,4.2,N,E,D
+62,F,C,73,4.6,N,E,D
+52,F,F,26,2.6,N,R,P
+23,F,C,41,3.4,N,N,P
+26,F,A,98,3.1,N,S,P
+58,F,C,63,3.6,N,R,D
+26,F,F,55,4.2,N,N,D
+54,F,C,90,3.6,N,S,P
+66,F,A,46,3.6,N,E,V
+60,F,C,88,3.0,N,P,D
+32,F,A,95,2.5,N,T,B
+48,F,A,31,4.0,N,P,B
+69,F,C,42,4.1,N,N,H
+64,F,F,44,4.9,N,N,C
+56,F,C,99,4.0,N,N,B
+22,F,C,20,3.5,N,P,P
+46,F,A,37,3.2,N,P,P
+24,F,C,50,2.8,N,P,V
+47,F,A,73,3.5,N,N,V
+62,F,C,84,3.1,N,R,B
+34,F,C,64,3.3,N,P,B
+50,F,F,21,4.6,N,R,H
+29,F,C,36,4.9,N,P,B
+68,F,C,81,3.4,N,T,C
+52,F,A,54,3.5,N,N,B
+29,F,C,63,4.8,N,P,H
+22,F,F,59,2.7,N,P,H
+62,F,A,53,3.4,N,S,V
+69,F,C,63,3.5,N,N,B
+48,F,F,33,3.7,N,R,B
+66,F,C,64,3.3,N,N,B
+42,F,C,98,2.9,N,R,B
+50,F,A,85,3.9,N,E,B
+32,F,A,82,2.7,N,E,P
+51,F,O,85,4.3,N,S,H
+27,F,C,37,3.0,N,T,B
+43,F,C,56,5.0,N,T,D
+48,F,C,33,2.7,N,E,D
+62,F,F,57,4.7,N,N,P
+65,F,C,31,4.6,N,S,C
+50,F,C,69,3.2,N,T,P
+60,F,O,92,4.3,N,R,B
+19,F,A,46,4.6,N,N,B
+21,F,A,81,4.9,N,R,D
+19,F,C,97,3.8,N,E,V
+46,F,C,93,2.6,N,E,D
+21,F,A,56,4.7,N,P,V
+26,F,A,53,4.1,N,R,B
+50,F,O,66,3.7,N,P,V
+43,F,C,50,3.0,N,R,P
+61,F,C,97,4.7,N,S,D
+63,F,F,79,4.7,N,T,C
+46,F,C,76,4.0,N,P,D
+63,F,C,38,2.6,N,S,V
+23,F,C,45,3.0,N,E,C
+57,F,A,77,3.3,N,N,V
+57,F,A,51,3.4,N,S,H
+33,F,O,26,4.0,N,S,H
+57,F,A,76,2.6,N,P,B
+55,F,A,94,3.4,N,R,C
+65,F,O,32,4.4,N,S,H
+60,F,F,20,4.7,N,E,V
+52,F,C,20,4.5,N,P,V
+34,F,O,59,2.9,N,P,B
+33,F,C,97,4.2,N,E,H
+58,F,C,68,4.1,N,N,H
+35,F,F,66,4.4,N,P,B
+68,F,F,85,4.7,N,R,V
+58,F,C,32,3.1,N,N,H
+34,F,O,44,2.7,N,T,B
+47,F,C,95,4.6,N,N,H
+35,F,A,85,4.4,N,N,V
+34,F,A,44,4.6,N,R,B
+36,F,A,30,4.9,N,E,C
+23,F,F,21,4.0,N,T,V
+68,F,C,22,2.9,N,P,H
+23,F,F,70,2.6,N,R,D
+57,F,A,29,4.6,N,S,P
+21,F,C,83,4.9,N,R,P
+45,F,C,99,4.3,N,E,C
+37,F,C,35,4.3,N,R,V
+18,F,A,40,4.6,N,R,V
+55,F,C,25,2.6,N,E,B
+52,F,C,64,3.1,N,T,B
+49,F,A,90,3.1,N,P,P
+56,F,C,88,3.1,N,N,V
+27,F,A,55,4.4,N,S,H
+22,F,A,90,4.3,N,R,H
+18,F,C,50,3.1,N,T,H
+21,F,A,34,3.1,N,P,D
+30,F,A,77,4.9,N,T,C
+62,F,A,89,2.9,N,P,B
+28,F,A,87,3.8,N,N,H
+66,F,C,77,4.2,N,T,H
+66,F,F,85,3.9,N,S,B
+49,F,C,66,2.8,N,E,H
+40,F,C,32,2.6,N,S,C
+49,F,O,92,3.0,N,P,B
+19,F,C,80,2.7,N,N,B
+24,F,C,78,2.8,N,T,H
+31,F,C,24,2.9,N,T,P
+35,F,C,59,3.8,N,R,V
+65,F,A,41,4.4,N,E,C
+68,F,A,26,3.1,N,E,B
+57,F,C,52,3.7,N,S,D
+69,F,C,46,4.9,N,N,P
+45,F,C,52,3.8,N,P,P
+35,F,C,42,3.4,N,P,D
+36,F,F,37,4.6,N,T,C
+55,F,A,52,3.2,N,S,C
+66,F,F,34,2.7,N,R,C
+57,F,C,88,4.3,N,R,D
+18,F,A,88,3.8,N,S,P
+31,F,O,51,4.4,N,R,P
+50,F,A,97,3.6,N,R,C
+50,F,F,56,3.5,N,S,H
+61,F,C,53,4.2,N,T,V
+52,F,C,71,4.7,N,E,P
+38,F,A,93,4.8,N,P,V
+67,F,C,72,3.2,N,R,D
+42,F,C,59,3.5,N,S,B
+25,F,F,87,4.2,N,P,P
+41,F,C,78,3.4,N,R,C
+62,F,C,68,4.7,N,P,C
+19,F,C,76,3.0,N,R,H
+63,F,A,99,4.0,N,E,C
+43,F,F,52,4.6,N,S,C
+68,F,A,58,4.9,N,N,C
+24,F,A,59,2.8,N,E,D
+27,F,C,71,3.2,N,R,C
+61,F,A,94,2.8,N,R,D
+59,F,A,40,4.2,N,E,P
+67,F,C,24,4.8,N,R,C
+46,F,C,38,2.8,N,T,H
+65,F,A,37,4.5,N,S,V
+63,F,O,29,4.1,N,E,V
+57,F,O,92,4.3,N,R,D
+40,F,C,24,4.4,N,T,B
+36,F,F,52,3.0,N,R,P
+67,F,C,29,2.7,N,N,P
+61,F,A,30,3.3,N,T,P
+64,F,F,31,4.3,N,S,D
+30,F,C,67,2.9,N,E,V
+53,F,C,65,4.9,N,S,H
+27,F,F,22,3.6,N,T,D
+27,F,A,56,3.3,N,S,C
+53,F,C,78,3.1,N,R,D
+34,F,O,90,2.7,N,R,P
+39,F,C,85,3.4,N,N,H
+44,F,A,58,3.4,N,E,V
+37,F,C,34,3.9,N,E,P
+57,F,O,40,3.5,N,T,C
+38,F,A,29,4.1,N,R,H
+21,F,C,76,3.2,N,S,H
+45,F,A,84,4.6,N,P,P
+68,F,C,65,3.9,N,S,V
+37,F,C,80,2.7,N,R,P
+53,F,C,98,3.0,N,P,C
+57,F,F,71,3.3,N,N,B
+28,F,A,69,2.7,N,R,D
+37,F,A,95,4.6,N,T,P
+54,F,C,67,2.7,N,E,H
+49,F,F,49,2.5,N,N,D
+62,F,F,97,4.4,N,R,C
+45,F,C,34,4.0,N,N,B
+45,F,A,74,3.8,N,E,D
+49,F,A,96,2.5,N,T,D
+27,F,A,68,4.0,N,R,V
+63,F,A,84,4.1,N,N,H
+61,F,C,57,2.8,N,E,H
+25,F,F,84,3.4,N,T,H
+33,F,A,32,2.7,N,T,H
+56,F,F,37,3.8,N,T,B
+50,F,A,58,4.4,N,P,P
+45,F,C,74,2.8,N,E,V
+45,F,C,99,5.0,N,P,B
+65,F,C,81,4.7,N,E,C
+63,F,C,76,3.2,N,N,H
+70,F,F,98,2.9,N,P,H
+53,F,A,91,3.7,N,E,P
+22,F,C,79,4.2,N,R,B
+26,F,A,83,3.4,N,E,C
+23,F,O,90,2.9,N,T,V
+25,F,O,20,3.7,N,S,V
+69,F,F,21,2.7,N,P,C
+36,F,A,60,3.2,N,T,V
+21,F,C,31,4.9,N,P,B
+57,F,C,40,2.8,N,N,B
+60,F,A,26,4.7,N,R,V
+44,F,C,98,3.3,N,E,V
+31,F,F,51,4.3,N,E,C
+57,F,A,95,3.7,N,T,D
+39,F,A,36,4.5,N,T,C
+48,F,A,52,3.4,N,P,D
+42,F,C,35,2.7,N,S,H
+56,F,C,68,4.4,N,E,D
+28,F,C,50,4.0,N,E,H
+40,F,A,100,3.2,N,E,C
+49,F,O,74,4.2,N,N,B
+37,F,C,45,3.0,N,P,C
+22,F,C,97,2.8,N,R,B
+27,F,C,60,4.9,N,E,H
+59,F,C,25,4.7,N,E,P
+35,F,C,55,4.4,N,S,C
+58,F,F,99,3.1,N,N,P
+58,F,A,45,2.6,N,R,P
+46,F,C,20,3.9,N,P,H
+43,F,C,88,2.6,N,T,D
+39,F,A,99,4.0,N,P,P
+59,F,C,86,4.9,N,P,C
+59,F,C,70,3.3,N,T,B
+59,F,A,50,3.0,N,E,D
+45,F,A,57,2.7,N,N,P
+27,F,C,69,3.1,N,R,B
+24,F,C,94,4.8,N,N,C
+47,F,O,24,2.9,N,E,D
+70,F,A,79,4.5,N,T,V
+58,F,A,31,4.6,N,R,H
+45,F,O,67,5.0,N,E,V
+24,F,C,63,4.3,N,T,C
+67,F,A,61,4.9,N,N,C
+31,F,A,50,4.0,N,T,V
+52,F,O,82,3.1,N,R,P
+29,F,A,51,2.6,N,T,H
+62,F,A,23,4.9,N,S,B
+19,F,O,91,3.5,N,T,C
+62,F,C,60,4.5,N,P,B
+70,F,C,34,2.8,N,N,H
+20,F,C,23,4.2,N,N,V
+67,F,A,82,4.1,N,R,P
+65,F,O,73,3.5,N,E,B
+45,F,C,32,4.0,N,T,V
+26,F,A,80,4.0,N,E,B
+36,F,C,58,2.5,N,R,C
+36,F,C,82,4.2,N,S,V
+20,F,A,60,3.4,N,N,C
+30,F,A,79,4.8,N,N,B
+34,F,C,41,4.9,N,S,P
+63,F,O,39,3.6,N,P,V
+18,F,A,36,4.0,N,P,H
+55,F,C,70,2.6,N,E,H
+48,F,A,47,3.1,N,P,P
+45,F,O,27,3.6,N,R,P
+29,F,A,52,4.0,N,E,B
+55,F,F,75,3.9,N,N,H
+55,F,A,30,3.9,N,E,C
+55,F,C,94,3.3,N,S,C
+48,F,A,68,2.9,N,S,P
+42,F,C,45,3.1,N,R,D
+21,F,A,67,4.7,N,S,H
+45,F,O,46,3.9,N,R,P
+23,F,C,31,4.3,N,N,C
+66,F,C,44,4.2,N,T,H
+32,F,O,100,4.3,N,N,V
+52,F,C,92,4.6,N,N,P
+54,F,A,78,3.8,N,R,C
+37,F,C,32,3.3,N,S,V
+29,F,F,97,3.7,N,T,V
+47,F,A,95,4.3,N,S,D
+47,F,C,64,4.1,N,E,D
+42,F,F,35,3.2,N,R,H
+34,F,A,54,3.8,N,E,D
+38,F,F,96,3.2,N,T,B
+55,F,A,58,3.5,N,R,P
+27,F,C,23,3.1,N,T,P
+55,F,C,35,4.2,N,E,P
+66,F,C,23,3.4,N,R,C
+44,F,A,94,3.5,N,E,B
+39,F,C,45,4.0,N,R,D
+23,F,O,23,4.4,N,T,B
+29,F,C,94,2.9,N,T,C
+20,F,A,99,3.6,N,P,H
+42,F,C,36,4.4,N,R,C
+55,F,O,50,4.5,N,S,C
+66,F,O,81,3.8,N,R,C
+24,F,C,31,3.6,N,T,H
+62,F,A,48,4.3,N,R,H
+28,F,A,91,4.0,N,T,V
+30,F,C,99,3.4,N,E,V
+22,F,F,70,4.4,N,S,P
+28,F,C,74,2.8,N,S,H
+35,F,A,79,2.8,N,P,P
+45,F,A,33,4.9,N,T,H
+43,F,C,49,4.2,N,T,B
+55,F,A,96,2.9,N,N,B
+31,F,C,66,4.6,N,R,C
+42,F,C,45,2.8,N,N,P
+40,F,C,28,2.6,N,P,B
+39,F,C,48,3.5,N,P,P
+41,F,C,67,3.5,N,R,C
+56,F,C,59,3.4,N,T,H
+43,F,A,74,3.9,N,N,D
+22,F,O,81,3.3,N,T,H
+47,F,F,26,4.1,N,R,C
+50,F,A,61,3.0,N,N,V
+58,F,C,23,3.0,N,N,B
+50,F,A,33,3.2,N,S,C
+43,F,C,58,3.9,N,E,C
+38,F,A,65,3.6,N,T,D
+44,F,C,48,3.1,N,P,V
+30,F,F,25,4.8,N,E,B
+47,F,C,51,3.8,N,T,H
+30,F,A,31,2.8,N,P,H
+49,F,C,99,4.0,N,N,P
+56,F,C,25,4.6,N,R,C
+70,F,F,52,3.5,N,P,D
+22,F,C,47,3.7,N,T,D
+51,F,F,98,4.9,N,E,C
+22,F,A,46,4.1,N,P,H
+37,F,C,32,4.6,N,N,P
+49,F,C,75,4.5,N,N,H
+61,F,A,51,5.0,N,P,H
+41,F,C,52,3.8,N,S,P
+57,F,A,66,4.7,N,S,C
+34,F,C,35,2.8,N,E,B
+27,F,O,43,2.6,N,N,V
+39,F,C,24,3.8,N,R,V
+62,F,A,83,2.8,N,S,C
+34,F,C,62,2.6,N,T,H
+53,F,C,78,3.4,N,T,C
+35,F,C,61,4.5,N,P,C
+38,F,C,57,3.8,N,R,V
+32,F,C,70,3.0,N,N,P
+47,F,C,57,3.7,N,T,D
+53,F,A,74,4.4,N,R,V
+60,F,C,90,3.1,N,N,D
+31,F,F,98,4.2,N,P,P
+44,F,C,43,3.1,N,R,D
+29,F,C,37,5.0,N,N,P
+19,F,C,38,2.7,N,S,B
+54,F,C,60,3.8,N,S,H
+40,F,C,55,3.3,N,S,D
+39,F,A,51,4.8,N,R,V
+44,F,A,71,3.4,N,S,C
+22,F,C,61,4.4,N,T,P
+30,F,F,65,3.9,N,S,H
+69,F,A,34,3.9,N,T,C
+28,F,C,87,4.2,N,P,B
+57,F,C,79,4.0,N,P,V
+46,F,C,46,2.6,N,P,H
+48,F,C,72,4.4,N,S,B
+24,F,C,93,3.2,N,N,C
+50,F,F,76,4.3,N,R,B
+29,F,F,56,4.9,N,T,H
+61,F,F,83,3.8,N,P,V
+34,F,A,90,2.5,N,E,P
+27,F,F,94,4.9,N,N,B
+38,F,C,68,3.0,N,T,B
+25,F,F,53,3.2,N,P,B
+54,F,O,35,2.9,N,T,D
+53,F,O,30,2.8,N,R,D
+23,F,A,26,3.1,N,P,V
+19,F,A,60,3.4,N,E,P
+57,F,F,30,2.9,N,R,P
+19,F,O,91,3.2,N,N,V
+33,F,F,71,3.8,N,N,P
+33,F,A,64,3.6,N,T,C
+38,F,A,54,4.3,N,N,D
+47,F,C,35,4.8,N,T,C
+39,F,C,38,2.5,N,P,H
+32,F,A,69,2.5,N,N,V
+27,F,C,96,4.6,N,E,D
+67,F,C,73,4.2,N,N,B
+46,F,A,49,4.2,N,E,V
+36,F,F,44,4.8,N,T,P
+62,F,C,93,4.5,N,R,P
+31,F,C,72,3.3,N,T,V
+68,F,C,91,2.7,N,T,D
+57,F,A,83,2.8,N,T,B
+22,F,O,62,3.5,N,T,P
+26,F,C,71,3.0,N,P,C
+43,F,A,93,4.5,N,E,V
+45,F,A,63,4.3,N,T,P
+64,F,C,96,4.1,N,S,C
+28,F,C,78,4.3,N,N,P
+47,F,C,24,5.0,N,R,H
+53,F,C,63,3.8,N,T,B
+42,F,A,58,4.9,N,S,D
+51,F,F,55,5.0,N,T,H
+62,F,F,58,4.3,N,E,B
+18,F,O,28,4.1,N,E,B
+48,F,C,37,4.5,N,S,H
+20,F,C,78,3.6,N,P,P
+32,F,C,73,3.0,N,R,C
+26,F,O,20,3.7,N,N,V
+31,F,C,60,4.3,N,S,V
+55,F,A,71,4.6,N,P,P
+49,F,C,89,4.7,N,S,V
+42,F,C,53,4.6,N,E,V
+64,F,A,87,3.0,N,E,H
+68,F,A,37,3.4,N,S,V
+68,F,C,37,3.8,N,E,P
+41,F,A,78,3.1,N,E,B
+51,F,F,23,4.4,N,S,H
+44,F,C,73,4.5,N,S,C
+27,F,A,27,2.8,N,T,P
+36,F,O,59,2.7,N,N,P
+19,F,A,53,3.4,N,S,D
+49,F,C,42,4.6,N,S,B
+18,F,A,45,5.0,N,N,C
+36,F,A,89,3.5,N,S,D
+36,F,C,85,3.3,N,P,H
+19,F,O,69,4.5,N,R,H
+43,F,F,66,3.1,N,P,H
+31,F,C,42,4.0,N,R,D
+63,F,C,40,2.5,N,E,H
+41,F,C,82,4.4,N,P,V
+48,F,F,88,4.4,N,E,H
+68,F,F,99,3.2,N,R,H
+53,F,A,85,3.8,N,P,D
+36,F,A,57,4.6,N,P,P
+46,F,C,56,4.9,N,S,H
+21,F,F,79,3.5,N,R,P
+52,F,C,67,3.4,N,P,D
+66,F,A,61,3.9,N,N,D
+19,F,C,37,3.9,N,E,C
+44,F,C,75,4.2,N,R,C
+50,F,C,21,3.4,N,S,D
+51,F,C,89,4.9,N,S,P
+25,F,F,24,2.9,N,P,B
+62,F,C,27,4.9,N,P,H
+48,F,C,26,4.6,N,T,P
+62,F,F,82,3.6,N,P,C
+22,F,C,28,4.3,N,E,H
+48,F,A,65,4.6,N,S,B
+48,F,C,82,4.7,N,P,C
+62,F,A,38,3.5,N,R,P
+24,F,C,33,2.8,N,R,H
+39,F,F,38,4.0,N,R,P
+35,F,A,48,4.3,N,P,V
+47,F,F,35,3.8,N,S,B
+22,F,C,29,3.0,N,N,P
+38,F,C,48,4.6,N,N,D
+53,F,F,87,4.8,N,S,B
+31,F,A,62,4.7,N,N,B
+31,F,C,96,3.9,N,R,H
+65,F,A,41,4.0,N,N,V
+48,F,A,42,3.7,N,T,B
+18,F,C,57,3.7,N,T,H
+46,F,A,65,4.2,N,P,C
+52,F,C,54,4.7,N,S,B
+50,F,C,22,4.3,N,N,V
+49,F,F,96,4.9,N,T,V
+69,F,A,81,3.9,N,T,C
+36,F,C,46,3.4,N,R,D
+30,F,C,74,4.2,N,P,C
+25,F,F,50,4.7,N,E,H
+19,F,C,80,4.0,N,N,D
+34,F,F,56,4.0,N,R,P
+29,F,C,69,3.1,N,N,D
+50,F,C,97,4.2,N,S,P
+31,F,C,66,3.7,N,N,B
+41,F,A,70,3.1,N,E,B
+52,F,F,50,3.7,N,P,V
+27,F,C,85,3.2,N,P,H
+49,F,A,59,2.8,N,S,H
+69,F,C,74,2.9,N,R,C
+45,F,A,38,3.5,N,S,B
+20,F,C,99,3.8,N,E,P
+25,F,C,97,4.7,N,R,H
+38,F,A,67,4.5,N,R,P
+55,F,C,20,3.9,N,N,B
+62,F,A,45,3.4,N,E,P
+54,F,F,52,4.6,N,T,H
+61,F,C,68,4.6,N,S,C
+50,F,F,98,4.7,N,S,V
+65,F,F,83,3.2,N,E,H
+68,F,C,51,5.0,N,E,D
+55,F,A,21,4.5,N,E,V
+57,F,A,92,3.5,N,S,C
+56,F,F,63,4.5,N,P,V
+29,F,A,56,3.2,N,E,C
+24,F,C,95,4.6,N,R,B
+59,F,C,66,4.0,N,N,P
+62,F,O,28,4.2,N,E,V
+58,F,A,83,4.1,N,S,P
+64,F,C,55,3.6,N,T,H
+48,F,F,28,3.7,N,T,D
+60,F,A,79,3.6,N,R,B
+52,F,A,31,3.8,N,S,C
+63,F,C,37,3.0,N,S,D
+44,F,C,34,3.4,N,T,B
+63,F,F,74,4.8,N,S,H
+66,F,A,31,2.6,N,P,V
+22,F,A,66,2.9,N,N,P
+62,F,F,99,4.9,N,R,B
+39,F,C,55,5.0,N,R,C
+25,F,C,23,4.6,N,N,H
+70,F,C,88,4.2,N,E,H
+52,F,O,26,4.9,N,N,P
+68,F,A,94,4.8,N,S,V
+18,F,C,25,3.0,N,N,V
+18,F,C,96,3.5,N,E,C
+63,F,F,29,3.4,N,S,C
+47,F,F,36,3.4,N,R,B
+43,F,C,90,4.9,N,S,C
+60,F,A,38,4.4,N,R,V
+49,F,A,52,4.2,N,P,P
+28,F,C,88,3.1,N,N,V
+32,F,A,56,4.0,N,N,C
+29,F,F,71,4.8,N,N,P
+35,F,F,94,3.3,N,E,B
+23,F,C,97,4.7,N,S,D
+70,F,C,27,3.2,N,S,B
+23,F,C,28,5.0,N,S,C
+43,F,C,67,4.9,N,R,P
+29,F,C,70,4.9,N,E,B
+61,F,O,95,3.7,N,E,V
+29,F,F,24,3.0,N,E,V
+66,F,A,35,2.6,N,S,B
+46,F,F,22,2.6,N,S,B
+34,F,A,66,4.8,N,S,C
+51,F,C,83,3.2,N,T,H
+26,F,C,95,4.9,N,N,C
+23,F,C,41,3.4,N,T,P
+52,F,C,77,2.7,N,P,C
+39,F,F,52,4.8,N,E,D
+39,F,A,41,4.1,N,S,V
+33,F,C,28,4.6,N,P,P
+33,F,C,90,4.4,N,S,D
+23,F,A,55,3.5,N,T,H
+31,F,A,73,4.8,N,N,H
+27,F,C,87,2.9,N,T,V
+48,F,O,89,3.2,N,T,B
+61,F,F,82,4.4,N,T,V
+63,F,F,80,4.6,N,N,P
+19,F,A,87,2.6,N,T,V
+21,F,C,41,3.1,N,P,P
+28,F,C,83,4.3,N,S,H
+29,F,A,71,3.1,N,S,B
+23,F,C,76,4.6,N,P,B
+37,F,A,34,4.6,N,E,H
+67,F,C,81,2.7,N,R,H
+34,F,C,47,3.0,N,N,P
+58,F,C,36,3.3,N,P,D
+45,F,C,51,2.7,N,R,H
+63,F,C,86,3.3,N,S,D
+68,F,C,41,4.3,N,P,B
+41,F,F,90,4.8,N,E,V
+50,F,A,93,3.3,N,S,V
+24,F,A,56,4.3,N,N,H
+21,F,C,39,3.0,N,T,D
+18,F,O,86,4.8,N,T,B
+63,F,C,82,2.9,N,S,C
+47,F,F,29,3.6,N,S,H
+58,F,A,27,3.5,N,P,V
+46,F,A,25,4.7,N,T,B
+35,F,C,31,4.4,N,R,C
+42,F,C,23,3.3,N,P,D
+48,F,A,47,4.3,N,E,D
+28,F,A,67,4.0,N,T,P
+44,F,A,75,4.9,N,T,V
+60,F,F,82,2.9,N,E,C
+38,F,F,32,4.0,N,T,H
+46,F,C,41,4.3,N,P,C
+39,F,A,89,2.7,N,T,P
+22,F,A,82,5.0,N,P,B
+44,F,A,99,4.4,N,E,P
+69,F,C,98,3.5,N,E,V
+39,F,A,54,3.3,N,N,H
+53,F,C,88,3.8,N,R,C
+52,F,C,43,4.5,N,S,D
+65,F,A,73,4.8,N,P,H
+48,F,A,50,2.9,N,P,C
+27,F,F,73,3.2,N,E,D
+39,F,A,51,2.8,N,R,B
+59,F,C,22,3.3,N,S,P
+52,F,F,32,3.3,N,R,C
+50,F,F,38,4.2,N,T,H
+32,F,F,66,3.6,N,E,C
+40,F,A,20,4.6,N,E,P
+26,F,O,44,3.6,N,T,V
+47,F,A,31,4.0,N,N,P
+51,F,O,45,2.7,N,R,B
+47,F,C,71,4.4,N,P,P
+53,F,A,96,3.2,N,S,D
+35,F,C,32,2.6,N,N,V
+38,F,A,90,3.4,N,R,C
+69,F,A,68,5.0,N,T,D
+47,F,C,45,2.9,N,P,B
+31,F,C,67,5.0,N,R,H
+68,F,C,57,4.4,N,S,C
+51,F,C,60,3.5,N,T,P
+20,F,A,32,3.8,N,E,V
+27,F,A,29,3.8,N,P,D
+67,F,O,20,3.9,N,N,C
+21,F,A,98,3.3,N,N,C
+20,F,C,27,2.9,N,N,C
+35,F,O,67,3.7,N,T,C
+58,F,F,82,3.7,N,E,D
+28,F,C,72,4.6,N,S,P
+27,F,F,77,4.9,N,P,B
+19,F,F,74,3.1,N,T,B
+63,F,F,39,3.5,N,N,C
+69,F,C,80,4.9,N,N,D
+65,F,A,59,4.4,N,E,C
+63,F,O,68,4.4,N,P,D
+28,F,C,77,3.4,N,N,C
+67,F,A,50,3.0,N,T,H
+51,F,C,45,2.6,N,N,V
+59,F,C,71,3.2,N,P,V
+25,F,C,52,4.6,N,P,P
+31,F,F,50,3.8,N,R,P
+62,F,A,66,4.8,N,T,V
+51,F,F,81,4.5,N,R,P
+32,F,C,28,4.2,N,T,B
+35,F,A,65,2.7,N,T,V
+70,F,A,80,4.5,N,E,B
+19,F,A,94,4.9,N,R,P
+32,F,A,30,2.8,N,S,H
+56,F,C,45,3.5,N,S,B
+53,F,O,91,2.5,N,P,H
+22,F,A,36,2.9,N,S,D
+26,F,A,73,4.2,N,N,D
+42,F,C,60,4.6,N,P,V
+30,F,C,77,3.0,N,R,V
+29,F,C,86,4.4,N,R,C
+47,F,C,42,2.6,N,S,H
+59,F,F,70,4.8,N,R,H
+34,F,C,44,2.9,N,N,B
+52,F,A,91,3.0,N,N,H
+47,F,A,30,4.5,N,S,B
+24,F,C,23,3.7,N,P,B
+63,F,F,21,4.8,N,N,P
+59,F,O,34,4.8,N,R,H
+66,F,C,46,4.7,N,T,V
+45,F,C,41,2.6,N,E,P
+38,F,C,33,4.6,N,S,B
+63,F,C,48,3.4,N,N,B
+55,F,C,66,3.0,N,S,H
+25,F,C,54,4.0,N,T,V
+51,F,A,55,2.6,N,P,B
+28,F,A,84,3.4,N,P,B
+46,F,F,66,4.5,N,P,H
+58,F,F,65,2.7,N,P,V
+30,F,F,83,2.9,N,S,P
+68,F,A,61,4.0,N,P,C
+28,F,C,65,3.2,N,R,D
+26,F,F,55,4.0,N,P,H
+35,F,A,79,3.4,N,T,V
+40,F,C,96,4.9,N,E,P
+31,F,C,43,3.6,N,R,P
+60,F,A,40,3.6,N,T,B
+69,F,A,62,3.2,N,R,H
+51,F,C,72,3.7,N,T,P
+49,F,F,87,2.6,N,E,D
+18,F,A,31,3.9,N,E,C
+63,F,A,34,3.4,N,R,B
+57,F,C,53,3.4,N,N,D
+45,F,C,85,4.2,N,E,B
+36,F,C,50,2.9,N,S,B
+20,F,C,91,4.1,N,R,B
+21,F,A,56,3.6,N,R,C
+62,F,O,60,4.0,N,N,H
+23,F,O,34,4.0,N,S,C
+26,F,F,30,3.6,N,R,D
+30,F,A,71,3.1,N,E,B
+18,F,C,100,4.4,N,N,P
+47,F,A,85,4.3,N,N,D
+41,F,C,83,3.5,N,N,D
+62,F,O,31,3.0,N,S,D
+28,F,F,82,4.7,N,T,H
+46,F,C,79,2.5,N,T,C
+54,F,A,62,3.1,N,T,P
+36,F,F,92,3.3,N,R,P
+25,F,C,58,4.7,N,N,D
+38,F,C,88,3.4,N,N,D
+38,F,F,44,3.1,N,T,P
+42,F,C,56,4.6,N,P,P
+19,F,A,23,4.9,N,R,P
+34,F,C,45,2.7,N,R,H
+38,F,A,31,4.2,N,R,C
+42,F,C,96,2.6,N,P,D
+58,F,C,96,3.2,N,T,D
+56,F,C,80,4.4,N,S,C
+62,F,C,28,3.6,N,R,D
+24,F,C,51,2.7,N,N,B
+60,F,C,41,4.3,N,E,D
+53,F,O,99,2.6,N,N,P
+26,F,C,53,4.3,N,P,B
+34,F,A,25,3.9,N,T,V
+24,F,C,95,2.9,N,T,V
+42,F,C,88,3.1,N,R,P
+36,F,A,97,4.2,N,R,C
+24,F,O,81,4.1,N,T,V
+39,F,A,26,4.2,N,N,B
+46,F,F,41,4.4,N,E,H
+64,F,C,93,3.4,N,R,C
+64,F,C,69,4.8,N,E,D
+61,F,C,44,4.5,N,T,H
+61,F,F,54,2.7,N,P,B
+44,F,F,61,3.5,N,P,V
+65,F,C,80,3.1,N,N,P
+60,F,A,30,2.8,N,N,V
+65,F,C,94,2.9,N,P,P
+27,F,C,24,4.5,N,S,H
+36,F,C,21,3.5,N,N,V
+22,F,A,52,4.3,N,S,B
+62,F,A,59,4.9,N,N,D
+59,F,C,51,3.1,N,R,B
+50,F,C,35,4.0,N,R,B
+51,F,A,87,3.6,N,S,V
+23,F,C,42,4.0,N,P,B
+21,F,C,86,2.6,N,E,V
+44,F,C,26,3.1,N,N,H
+25,F,C,60,3.5,N,P,H
+57,F,A,83,3.9,N,S,P
+41,F,A,63,2.7,N,T,H
+19,F,F,25,4.1,N,S,C
+43,F,C,65,4.3,N,E,H
+25,F,F,60,2.9,N,R,D
+60,F,C,75,4.0,N,E,P
+54,F,F,57,4.1,N,R,V
+52,F,F,99,3.7,N,S,P
+40,F,O,45,2.8,N,R,P
+39,F,A,66,3.2,N,R,D
+54,F,C,53,4.5,N,N,V
+64,F,C,94,3.8,N,S,H
+31,F,F,47,3.6,N,T,V
+37,F,C,80,3.6,N,T,P
+43,F,A,65,3.2,N,N,D
+56,F,C,75,3.8,N,E,B
+27,F,A,45,4.4,N,S,C
+40,F,A,51,3.7,N,P,V
+43,F,A,58,2.6,N,E,P
+62,F,A,20,4.0,N,S,B
+44,F,A,82,3.6,N,T,V
+45,F,A,92,2.5,N,E,H
+40,F,C,81,3.2,N,R,B
+68,F,A,44,2.5,N,N,H
+63,F,A,72,3.2,N,N,C
+60,F,O,26,2.6,N,P,C
+19,F,C,26,4.8,N,N,V
+26,F,C,84,5.0,N,P,P
+70,F,A,72,3.2,N,T,B
+48,F,A,55,3.6,N,S,D
+37,F,A,77,2.7,N,T,H
+48,F,A,57,3.1,N,S,C
+18,F,F,71,3.0,N,S,P
+38,F,C,39,2.9,N,N,P
+33,F,C,28,4.7,N,E,D
+57,F,F,33,3.7,N,S,C
+46,F,C,79,3.9,N,R,V
+46,F,A,30,4.0,N,S,H
+50,F,C,75,2.8,N,N,B
+61,F,C,89,4.1,N,E,V
+45,F,C,95,4.2,N,R,B
+32,F,A,44,4.3,N,E,V
+29,F,O,86,4.3,N,P,C
+66,F,A,91,2.6,N,E,P
+70,F,F,41,3.8,N,R,H
+36,F,C,99,2.9,N,E,H
+34,F,A,65,5.0,N,S,D
+20,F,F,48,4.6,N,R,C
+70,F,A,41,3.2,N,R,P
+50,F,C,42,3.0,N,S,B
+54,F,C,26,4.0,N,R,C
+49,F,C,35,4.1,N,E,D
+50,F,O,31,4.0,N,E,B
+62,F,A,73,4.1,N,S,H
+42,F,C,82,3.4,N,R,H
+69,F,C,32,2.9,N,R,D
+22,F,A,27,3.0,N,T,B
+36,F,A,86,4.0,N,N,D
+64,F,F,38,4.8,N,T,H
+44,F,O,93,4.6,N,R,P
+43,F,C,59,4.1,N,T,H
+58,F,F,58,2.6,N,E,P
+62,F,C,84,2.5,N,R,P
+45,F,C,100,4.8,N,R,B
+47,F,C,25,4.2,N,E,V
+66,F,F,29,3.9,N,R,V
+30,F,C,42,3.7,N,E,V
+68,F,C,57,4.2,N,T,B
+35,F,O,84,4.2,N,N,D
+64,F,A,71,4.0,N,R,V
+30,F,C,87,5.0,N,N,V
+58,F,C,52,4.9,N,S,V
+57,F,C,58,4.0,N,E,P
+60,F,C,34,3.2,N,T,P
+22,F,A,60,3.0,N,N,H
+46,F,C,68,2.6,N,E,P
+27,F,A,74,4.4,N,T,D
+50,F,A,83,3.9,N,R,D
+65,F,A,79,4.0,N,T,P
+61,F,A,76,4.0,N,P,D
+57,F,C,20,4.2,N,R,V
+40,F,C,61,4.4,N,N,H
+39,F,F,78,2.5,N,R,D
+42,F,A,21,3.1,N,P,C
+30,F,C,77,3.5,N,P,C
+65,F,C,88,3.0,N,T,B
+57,F,A,64,4.4,N,N,H
+64,F,O,57,4.9,N,S,C
+56,F,C,49,2.8,N,N,V
+40,F,A,35,3.3,N,R,H
+55,F,C,99,4.9,N,E,D
+25,F,C,42,4.2,N,P,H
+58,F,A,32,3.3,N,T,C
+46,F,O,21,2.7,N,S,C
+18,F,C,29,3.3,N,T,H
+26,F,O,64,3.8,N,R,B
+61,F,F,46,3.2,N,N,H
+55,F,C,97,4.1,N,T,B
+41,F,O,94,4.3,N,S,H
+42,F,F,43,4.0,N,S,C
+70,F,C,54,3.9,N,T,C
+63,F,A,51,3.3,N,T,C
+60,F,F,85,2.6,N,T,H
+28,F,C,96,4.2,N,N,D
+60,F,A,42,3.4,N,T,C
+26,F,C,63,4.1,N,R,D
+42,F,C,20,3.9,N,R,P
+56,F,A,25,2.8,N,T,D
+35,F,C,95,2.6,N,R,H
+34,F,A,38,4.0,N,N,H
+47,F,F,29,4.9,N,E,P
+49,F,C,64,3.2,N,R,H
+37,F,A,92,3.9,N,E,D
+40,F,C,34,2.7,N,E,C
+45,F,F,69,3.4,N,S,V
+57,F,C,65,3.5,N,E,B
+35,F,C,81,2.6,N,S,D
+36,F,C,30,4.7,N,R,B
+35,F,A,86,3.5,N,S,P
+21,F,A,64,3.3,N,P,B
+66,F,C,78,3.9,N,T,C
+40,F,C,28,4.2,N,T,V
+52,F,A,49,4.5,N,P,B
+46,F,A,33,2.9,N,S,V
+44,F,F,77,3.8,N,E,V
+52,F,A,81,3.1,N,P,V`;
+
+const CATEGORY_NAMES = {C:'Clothing', A:'Accessories', F:'Footwear', O:'Outerwear'};
+const SHIP_NAMES = {E:'Express', R:'Free Shipping', N:'Next Day Air', S:'Standard', T:'2-Day Shipping', P:'Store Pickup'};
+const AGE_GROUP_ORDER = ['Young Adult','Middle-aged','Adult','Senior'];
+
+function ageGroup(age){
+  if(age <= 30) return 'Young Adult';
+  if(age <= 43) return 'Adult';
+  if(age <= 56) return 'Middle-aged';
+  return 'Senior';
+}
+
+const data = RAW_CSV.trim().split('\n').map(line=>{
+  const [age,gender,category,amount,rating,sub,ship,pay] = line.split(',');
+  return {
+    age:+age, gender, category, amount:+amount, rating:+rating,
+    sub, ship, pay, ageGroup: ageGroup(+age)
+  };
+});
+
+/* ---------------- FILTER STATE ---------------- */
+const state = { sub:null, gender:null, categories:new Set(), ship:null };
+
+function applyFilters(){
+  return data.filter(d=>{
+    if(state.sub && d.sub !== state.sub) return false;
+    if(state.gender && d.gender !== state.gender) return false;
+    if(state.categories.size && !state.categories.has(d.category)) return false;
+    if(state.ship && d.ship !== state.ship) return false;
+    return true;
+  });
+}
+
+/* ---------------- CHART INSTANCES ---------------- */
+const NAVY = '#1f3b8c';
+const NAVY_LIGHT = '#5c7bd6';
+const MAGENTA = '#c8109c';
+const LAVENDER = '#e3ade6';
+
+const commonBarOpts = (horizontal=false)=>({
+  indexAxis: horizontal ? 'y' : 'x',
+  responsive:true,
+  maintainAspectRatio:false,
+  plugins:{
+    legend:{display:false},
+    tooltip:{
+      backgroundColor:'#2b1a45',
+      padding:10,
+      titleFont:{size:12}, bodyFont:{size:12},
+      callbacks:{
+        label:(ctx)=> ' ' + ctx.formattedValue
+      }
+    }
+  },
+  scales:{
+    x:{ grid:{display: horizontal, color:'#f0eaf9'}, ticks:{color:'#7a6f92', font:{size:11}} },
+    y:{ grid:{display: !horizontal, color:'#f0eaf9'}, ticks:{color:'#7a6f92', font:{size:11}} }
+  }
+});
+
+let charts = {};
+
+function makeBarChart(id, labels, values, horizontal, color=NAVY){
+  const ctx = document.getElementById(id).getContext('2d');
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data: values, backgroundColor: color, borderRadius:4, maxBarThickness:46 }] },
+    options: commonBarOpts(horizontal)
+  });
+}
+
+function makeDonut(id, labels, values, colors){
+  const ctx = document.getElementById(id).getContext('2d');
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data: values, backgroundColor: colors, borderWidth:3, borderColor:'#fff' }] },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      cutout:'62%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#2b1a45',
+          callbacks:{ label:(ctx)=> ` ${ctx.label}: ${ctx.formattedValue}%` }
+        }
+      }
+    }
+  });
+}
+
+/* ---------------- RENDER ---------------- */
+function fmtK(n){
+  if(n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return String(n);
+}
+
+function render(){
+  const rows = applyFilters();
+  const n = rows.length;
+
+  // KPIs
+  document.getElementById('kpiCustomers').textContent = n ? fmtK(n) : '0';
+  document.getElementById('kpiAvgPurchase').textContent = n ? '$' + (rows.reduce((s,d)=>s+d.amount,0)/n).toFixed(2) : '$0.00';
+  const validRatings = rows.filter(d=>!isNaN(d.rating));
+  document.getElementById('kpiAvgRating').textContent = validRatings.length
+    ? (validRatings.reduce((s,d)=>s+d.rating,0)/validRatings.length).toFixed(2)
+    : '0.00';
+
+  // filter summary line
+  const parts = [];
+  if(state.sub) parts.push('Subscribed: ' + (state.sub==='Y'?'Yes':'No'));
+  if(state.gender) parts.push(state.gender==='F'?'Female':'Male');
+  if(state.categories.size) parts.push([...state.categories].map(c=>CATEGORY_NAMES[c]).join(', '));
+  if(state.ship) parts.push(SHIP_NAMES[state.ship]);
+  document.getElementById('filterSummary').textContent = parts.length
+    ? `Filtered: ${parts.join(' · ')} — ${n.toLocaleString()} customers`
+    : `Showing all ${n.toLocaleString()} customers`;
+
+  // Subscription donut
+  const yesCount = rows.filter(d=>d.sub==='Y').length;
+  const noCount = n - yesCount;
+  const yesPct = n ? Math.round(yesCount/n*100) : 0;
+  const noPct = 100 - yesPct;
+  makeDonut('subDonut', ['Yes','No'], [yesPct, noPct], [NAVY, LAVENDER]);
+  document.getElementById('labelYes').textContent = `Yes ${yesPct}%`;
+  document.getElementById('labelNo').textContent = `No ${noPct}%`;
+
+  // Category aggregates
+  const catKeys = ['C','A','F','O'];
+  const revByCat = catKeys.map(c=>({ key:c, val: rows.filter(d=>d.category===c).reduce((s,d)=>s+d.amount,0) }))
+                            .sort((a,b)=>b.val-a.val);
+  const salesByCat = catKeys.map(c=>({ key:c, val: rows.filter(d=>d.category===c).length }))
+                              .sort((a,b)=>b.val-a.val);
+  makeBarChart('revCatChart', revByCat.map(x=>CATEGORY_NAMES[x.key]), revByCat.map(x=>x.val), false);
+  makeBarChart('salesCatChart', salesByCat.map(x=>CATEGORY_NAMES[x.key]), salesByCat.map(x=>x.val), false, MAGENTA);
+
+  // Age group aggregates (fixed display order)
+  const revByAge = AGE_GROUP_ORDER.map(g=> rows.filter(d=>d.ageGroup===g).reduce((s,d)=>s+d.amount,0));
+  const salesByAge = AGE_GROUP_ORDER.map(g=> rows.filter(d=>d.ageGroup===g).length);
+  makeBarChart('revAgeChart', AGE_GROUP_ORDER, revByAge, true);
+  makeBarChart('salesAgeChart', AGE_GROUP_ORDER, salesByAge, true, MAGENTA);
+}
+
+/* ---------------- FILTER WIRING ---------------- */
+function wireToggle(containerId, stateKey){
+  const el = document.getElementById(containerId);
+  el.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = btn.dataset.value;
+      if(state[stateKey] === v){
+        state[stateKey] = null;
+        btn.classList.remove('active');
+      } else {
+        el.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+        state[stateKey] = v;
+        btn.classList.add('active');
+      }
+      render();
+    });
+  });
+}
+
+function wireCategory(){
+  const el = document.getElementById('categoryFilter');
+  el.querySelectorAll('.list-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = btn.dataset.value;
+      if(state.categories.has(v)){
+        state.categories.delete(v);
+        btn.classList.remove('active');
+      } else {
+        state.categories.add(v);
+        btn.classList.add('active');
+      }
+      render();
+    });
+  });
+}
+
+function wireShip(){
+  const el = document.getElementById('shipFilter');
+  el.querySelectorAll('.radio-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const v = row.dataset.value;
+      if(state.ship === v){
+        state.ship = null;
+        row.classList.remove('active');
+      } else {
+        el.querySelectorAll('.radio-row').forEach(r=>r.classList.remove('active'));
+        state.ship = v;
+        row.classList.add('active');
+      }
+      render();
+    });
+  });
+}
+
+document.getElementById('clearAll').addEventListener('click', ()=>{
+  state.sub = null; state.gender = null; state.categories.clear(); state.ship = null;
+  document.querySelectorAll('.toggle-btn, .list-btn, .radio-row').forEach(el=>el.classList.remove('active'));
+  render();
+});
+
+wireToggle('subFilter', 'sub');
+wireToggle('genderFilter', 'gender');
+wireCategory();
+wireShip();
+render();
+</script>
+</body>
+</html>
